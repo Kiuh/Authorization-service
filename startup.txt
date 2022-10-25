@@ -1,0 +1,18 @@
+cargo run --release -- --app-endpoint localhost:8080 --database-url postgresql://postgres:postgres@localhost:5432/lifesimdb
+
+############## Log in ############
+curl -X POST -v -H "Content-Type: application/json" -d '
+{
+  "login": "Jessica",
+  "password": "123Password"
+}' localhost:27503/User
+##################################
+
+############# Register ###########
+curl -X PUT -v -H "Content-Type: application/json" -d '
+{
+  "login": "Jessica",
+  "email": "someone@gmail.com",
+  "password": "123Password"
+}' localhost:8080/User
+##################################

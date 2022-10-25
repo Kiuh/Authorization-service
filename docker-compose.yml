@@ -1,0 +1,49 @@
+version: '3'
+services:
+  lifesim_db:
+    restart: always
+    hostname: lifesim_db
+    image: postgres:14
+    ports:
+      - '127.0.0.1:27500:5432'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=lifesimdb
+    volumes:
+      - lifesim_db_volume:/var/lib/postgresql/data:z
+      - ./src/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    
+  lifesim_backend:
+    restart: always
+    hostname: lifesim
+    ports:
+      - '127.0.0.1:27503:27503'
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    environment:
+      APP_ENDPOINT: "0.0.0.0:27503"
+      DATABASE_URL: "postgresql://postgres:postgres@lifesim_db:5432/lifesimdb"
+    external_links:
+      - lifesim_db:lifesim_db
+    healthcheck:
+      test: curl --fail lifesim:27503/Alive || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      - lifesim_db
+
+volumes:
+  lifesim_db_volume:
+
+networks:
+  default:
+    external:
+      name: lifesim_net
