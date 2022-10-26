@@ -11,8 +11,8 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=lifesimdb
     volumes:
-      - lifesim_db_volume:/var/lib/postgresql/data:z
-      - ./src/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:z
+      - ./database_schema/lifesimdb.sql:/docker-entrypoint-initdb.d/lifesimdb.sql:z
+      - ./database_schema/test_data.sql:/docker-entrypoint-initdb.d/test_data.sql:z
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
       interval: 10s
@@ -39,9 +39,6 @@ services:
       retries: 10
     depends_on:
       - lifesim_db
-
-volumes:
-  lifesim_db_volume:
 
 networks:
   default:

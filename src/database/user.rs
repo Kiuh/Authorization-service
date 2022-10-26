@@ -40,4 +40,16 @@ impl User {
         .await?
         .is_some())
     }
+
+    pub async fn get_id<'a, E>(login: &str, executor: E) -> crate::error::Result<Option<i64>>
+    where
+        E: Executor<'a, Database = Postgres>,
+    {
+        Ok(
+            sqlx::query!(r#"SELECT id FROM users WHERE login = $1"#, login)
+                .fetch_optional(executor)
+                .await?
+                .map(|res| res.id as i64),
+        )
+    }
 }

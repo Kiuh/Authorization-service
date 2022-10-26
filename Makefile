@@ -1,6 +1,5 @@
 docker_init:
 	-docker container prune -f >/dev/null 2>&1
-	-docker volume rm ./_lifesim_db_volume
 	-docker network create lifesim_net >/dev/null 2>&1
 
 run: halt docker_init

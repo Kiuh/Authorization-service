@@ -14,5 +14,31 @@ curl -X PUT -v -H "Content-Type: application/json" -d '
   "login": "Jessica",
   "email": "someone@gmail.com",
   "password": "123Password"
-}' localhost:8080/User
+}' localhost:27503/User
+##################################
+
+######## Get Generations data ####
+curl -X GET localhost:27503/Generations?login=TestUser
+##################################
+
+######## Delete generation #######
+curl -X DELETE localhost:27503/Generation/testGen?login=TestUser
+##################################
+
+######## Create generation #######
+curl -X PUT -H "Content-Type: application/json" -d \
+'{
+  "name": "Generation2w",
+  "map": "StandartMapw",
+  "feed_type": "Standart",
+  "setup_type": "Random_Generation",
+  "life_type": "Repeat_Start",
+  "description": "Bla bla bla",
+  "tick": 0.1,
+  "setup_json": "[{value: 40}]"
+}' localhost:27503/Generation?login=FFF
+##################################
+
+######## Get creation variants ###
+curl -X GET localhost:27503/CreationVariants
 ##################################

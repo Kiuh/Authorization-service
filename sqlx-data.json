@@ -26,9 +26,9 @@
       ],
       "nullable": [
         false,
-        true,
-        true,
-        true
+        false,
+        false,
+        false
       ],
       "parameters": {
         "Left": [
@@ -38,6 +38,122 @@
       }
     },
     "query": "SELECT * FROM users WHERE login = $1 AND password = $2"
+  },
+  "20e6fe8b831cf6438e71ef566ebcb5f2e883cb389d9713cf9178317cb163eec5": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "DELETE FROM generations WHERE name = $1 AND owner_id IN (SELECT id FROM users WHERE login = $2)"
+  },
+  "3976ac30713df1d2067be084c8bd7596853295f248c2c04d8a716fafd24c5db8": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Text",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Numeric",
+          "Varchar",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "\n                INSERT INTO generations\n                (name, owner_id, map_id, life_type, feed_type, setup_type, tick_period, setup_json, description) \n                VALUES \n                ($1, (SELECT id FROM users WHERE login = $2), $3, $4, $5, $6, $7, $8, $9)\n            "
+  },
+  "3fc9c663c2db51ddcc71b4beaabfa5091da938c9de755db3fab97f376c594c1d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n            SELECT * FROM feed_types\n            "
+  },
+  "4eafa93a7799de88e6266181b4413800f300a3e114ce93df4189ddf980ca7dc5": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "UPDATE generations \n            SET name = $1, description = $2\n            WHERE name = $3\n            AND owner_id IN (SELECT id FROM users WHERE login = $4)"
+  },
+  "a2a63b95a68836fb1b66ad94cb6e983d199175fcb0e498cbf2640235240c763e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT id FROM users WHERE login = $1"
+  },
+  "a651f008c131f6e6faf42a2f0c06b950a1c367a91f6f814507568b03c4ce347c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n            SELECT * FROM life_types\n            "
   },
   "a8073c83a5995160c2505c804d298b18a149f52eda184719132147c9acb524b4": {
     "describe": {
@@ -52,5 +168,139 @@
       }
     },
     "query": "INSERT INTO users (login, password, email) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING"
+  },
+  "aeb761425009fdcac87491d61da8eeace5e736af16da03c6255f121db5c4f59f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "map_id",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "life_type",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "feed_type",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "setup_type",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "tick_period",
+          "ordinal": 4,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "description",
+          "ordinal": 5,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "name",
+          "ordinal": 6,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n            SELECT \n            map_id, life_type, feed_type, setup_type, tick_period, description, name\n            FROM \n            (\n                SELECT map_id, life_type, feed_type, setup_type, tick_period, description, name, usr.id\n                FROM\n                generations\n                INNER JOIN \n                (\n                    SELECT id FROM users WHERE login = $1\n                ) usr\n                ON generations.owner_id = usr.id \n            ) gen_usr\n            "
+  },
+  "c14a7732d76258370088ac114acf32d64ea787a70b003a80f99faf7a3bc28e6c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "json",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n            SELECT * FROM setup_types\n            "
+  },
+  "c822ace7baa35d49bbcf06d58c460dcd3fff1c4486a996360253ec2c8d9c3d85": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "period",
+          "ordinal": 1,
+          "type_info": "Numeric"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n            SELECT * FROM tick_periods\n            "
+  },
+  "e25c68df05073a236a46901808b08caa36f6a4c5984e6ee7f5761425289162c3": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n            SELECT * FROM maps\n            "
   }
 }

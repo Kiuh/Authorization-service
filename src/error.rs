@@ -89,6 +89,18 @@ pub enum ServerError {
 
     #[error("Failed to register")]
     RegisterFailed,
+
+    #[error("Couldn't find user with name {0}")]
+    UserNotFound(String),
+
+    #[error("Couldn't find generation with name {0}")]
+    GenerationNotFound(String),
+
+    #[error("Failed to update generation name and description {0}")]
+    UpdateGenerationNameAndDescription(String),
+
+    #[error("Failed to create generation")]
+    InsertGeneration,
 }
 
 impl ResponseError for ServerError {
@@ -98,6 +110,10 @@ impl ResponseError for ServerError {
             ServerError::Database(_) => 2,
             ServerError::LogInFailed => 3,
             ServerError::RegisterFailed => 4,
+            ServerError::UserNotFound(_) => 5,
+            ServerError::GenerationNotFound(_) => 6,
+            ServerError::UpdateGenerationNameAndDescription(_) => 7,
+            ServerError::InsertGeneration => 8,
         }
     }
 }
