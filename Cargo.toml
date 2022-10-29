@@ -11,3 +11,4 @@ clap = {version = "3.2.20", features = ["derive", "env"] }
 sqlx = {version = "0.6.2", features = ["postgres", "offline", "runtime-tokio-native-tls", "macros", "uuid", "chrono", "bigdecimal"]}
 bigdecimal = { version = "0.3.0", features = ["serde"] }
 thiserror = "1.0.34"
+itertools = "0.10.5"

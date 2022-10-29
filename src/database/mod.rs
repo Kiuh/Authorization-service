@@ -1,3 +1,4 @@
+pub mod cell;
 pub mod creation_variants;
 pub mod generation;
 pub mod user;

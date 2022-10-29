@@ -31,14 +31,40 @@ impl User {
     where
         E: Executor<'a, Database = Postgres>,
     {
-        Ok(sqlx::query!(
+        let fetched = sqlx::query!(
             r#"SELECT * FROM users WHERE login = $1 AND password = $2"#,
             login,
             password
         )
         .fetch_optional(executor)
-        .await?
-        .is_some())
+        .await;
+
+        let fetched = match fetched {
+            Err(e) => {
+                panic!("Database error: {}", e);
+            }
+            Ok(fetched) => fetched,
+        };
+
+        if let Some(fetched) = fetched {
+            println!(
+                "Fetched user with ({}) ({}) ({}) ({})",
+                fetched.email, fetched.id, fetched.login, fetched.password
+            );
+            Ok(true)
+        } else {
+            println!("Not fetched");
+            Ok(false)
+        }
+
+        // Ok(sqlx::query!(
+        //     r#"SELECT * FROM users WHERE login = $1 AND password = $2"#,
+        //     login,
+        //     password
+        // )
+        // .fetch_optional(executor)
+        // .await?
+        // .is_some())
     }
 
     pub async fn get_id<'a, E>(login: &str, executor: E) -> crate::error::Result<Option<i64>>

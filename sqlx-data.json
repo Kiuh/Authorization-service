@@ -52,6 +52,27 @@
     },
     "query": "DELETE FROM generations WHERE name = $1 AND owner_id IN (SELECT id FROM users WHERE login = $2)"
   },
+  "32f658c9aaf0c0137768314718dc54927bcb0da37ccf1cbb3b45ad64c7df708f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                SELECT id \n                FROM generations \n                WHERE name = $1 AND \n                owner_id = (SELECT id FROM users WHERE login = $2)\n            "
+  },
   "3976ac30713df1d2067be084c8bd7596853295f248c2c04d8a716fafd24c5db8": {
     "describe": {
       "columns": [],
@@ -110,6 +131,65 @@
       }
     },
     "query": "UPDATE generations \n            SET name = $1, description = $2\n            WHERE name = $3\n            AND owner_id IN (SELECT id FROM users WHERE login = $4)"
+  },
+  "88b72b19daeef2c5dba07d41000d307ff6dd8849455688ccbbaec1ef2e6acdad": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4Array",
+          "Int4Array",
+          "Int4Array",
+          "NumericArray"
+        ]
+      }
+    },
+    "query": "\n                INSERT INTO \n                gens(intellect_id, from_id, to_id, weight) \n                SELECT * FROM \n                UNNEST($1::INTEGER[], $2::INTEGER[], $3::INTEGER[], $4::DECIMAL[])\n            "
+  },
+  "930ed8606adf9d0b33982a9a308f08cfc49d3ca276c24573860022f1a6ceab0b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4Array",
+          "Int4Array",
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "\n                INSERT INTO \n                cells(parent_id, local_id, generation_id) \n                SELECT * FROM UNNEST($1::INTEGER[], $2::INTEGER[], $3::INTEGER[]) \n                RETURNING id\n            "
+  },
+  "9e1dcc313cd5968126ecf71e304760576dda2f8bad53089119e7e1d60496cd48": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4Array",
+          "Int4Array",
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "\n                INSERT INTO \n                intellect(cell_id, in_neuron_count, out_neuron_count) \n                SELECT * FROM UNNEST($1::INTEGER[], $2::INTEGER[], $3::INTEGER[]) \n                RETURNING id\n            "
   },
   "a2a63b95a68836fb1b66ad94cb6e983d199175fcb0e498cbf2640235240c763e": {
     "describe": {
@@ -278,6 +358,33 @@
       }
     },
     "query": "\n            SELECT * FROM tick_periods\n            "
+  },
+  "da68c61b441a96d8ca605f8588df5580b9ca0442834a27c37ca96374ef2cdfc4": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4Array",
+          "NumericArray"
+        ]
+      }
+    },
+    "query": "INSERT INTO neurons(intellect_id, bias) SELECT * FROM UNNEST($1::INTEGER[], $2::DECIMAL[])"
+  },
+  "e02ed6454655f83cac9398f1e0cbf0f5eb5ece49567c53af1bd3798a32525977": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4Array",
+          "VarcharArray",
+          "NumericArray"
+        ]
+      }
+    },
+    "query": "INSERT INTO modules(cell_id, name, value) SELECT * FROM UNNEST($1::INTEGER[], $2::VARCHAR[], $3::DECIMAL[])"
   },
   "e25c68df05073a236a46901808b08caa36f6a4c5984e6ee7f5761425289162c3": {
     "describe": {

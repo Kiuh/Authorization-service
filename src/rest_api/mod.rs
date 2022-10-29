@@ -2,6 +2,7 @@ use actix_web::web;
 use serde::{Deserialize, Serialize};
 
 pub mod alive;
+pub mod common_types;
 pub mod creation_variants;
 pub mod generation;
 pub mod user;
@@ -20,6 +21,14 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route(
                 "{name}",
                 web::patch().to(generation::change_name_description::execute),
+            )
+            // .route(
+            //     "{name}/Cells/{sendId}",
+            //     web::get().to(generation::cells::get::execute),
+            // )
+            .route(
+                "{name}/Cells/{sendId}",
+                web::patch().to(generation::cells::patch::execute),
             ),
     )
     .service(web::scope("Alive").route("", web::get().to(alive::execute)))
