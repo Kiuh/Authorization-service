@@ -21,7 +21,6 @@ pub struct Cli {
 #[actix_web::main]
 async fn main() {
     let cli = Cli::parse();
-    println!("{}", cli.database_url);
     let server_state = Arc::new(ServerState::new(cli.database_url).await.unwrap());
 
     HttpServer::new(move || {

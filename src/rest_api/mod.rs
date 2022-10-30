@@ -22,10 +22,10 @@ pub fn config(cfg: &mut web::ServiceConfig) {
                 "{name}",
                 web::patch().to(generation::change_name_description::execute),
             )
-            // .route(
-            //     "{name}/Cells/{sendId}",
-            //     web::get().to(generation::cells::get::execute),
-            // )
+            .route(
+                "{name}/Cells/{sendId}",
+                web::get().to(generation::cells::get::execute),
+            )
             .route(
                 "{name}/Cells/{sendId}",
                 web::patch().to(generation::cells::patch::execute),

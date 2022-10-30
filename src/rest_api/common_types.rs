@@ -3,10 +3,10 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct Cell {
-    pub parent: u64,
-    pub id: u64,
+    pub parent_id: u64,
+    pub own_id: u64,
     pub modules: Vec<Module>,
-    pub intelect: Intellect,
+    pub intellect: Intellect,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -41,5 +41,5 @@ pub struct Module {
 pub struct Diff {
     pub cell_id: u64,
     pub name: String,
-    pub value: Option<BigDecimal>,
+    pub value: BigDecimal,
 }

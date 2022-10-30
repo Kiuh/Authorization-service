@@ -18,13 +18,9 @@ pub async fn execute(
     st: web::Data<ServerState>,
     data: web::Json<Request>,
 ) -> actix_web::Result<HttpResponse> {
-    println!("Login: ({}) Password: ({})", &data.login, &data.password);
-
     let exists = User::is_exists(&data.login, &data.password, &st.db_connection.pool)
         .await
         .map_err(|e| e.http_status_500())?;
-
-    println!("User exists: {}", exists);
 
     if exists {
         Response {}.into()

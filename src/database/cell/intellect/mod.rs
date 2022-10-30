@@ -1,4 +1,4 @@
-use itertools::MultiUnzip;
+use itertools::{izip, MultiUnzip};
 use sqlx::{Executor, Postgres};
 
 pub mod gen;
@@ -108,5 +108,58 @@ impl IntellectWithCellId {
         GenWithIntellectId::insert_many(gens, executor).await?;
 
         Ok(())
+    }
+}
+
+impl Intellect {
+    pub async fn fetch<'a, E>(id: i32, executor: E) -> crate::error::Result<Intellect>
+    where
+        E: Executor<'a, Database = Postgres>,
+    {
+        sqlx::query!(
+            r#"
+                SELECT 
+                    in_neuron_count, 
+                    out_neuron_count,
+                    (
+                        SELECT ARRAY_AGG(bias::DECIMAL) FROM neurons WHERE intellect_id = $1
+                    ) AS neuron_biases,
+                    (
+                        SELECT ARRAY_AGG(from_id::INTEGER) FROM gens WHERE intellect_id = $1
+                    ) AS gen_from_ids,
+                    (
+                        SELECT ARRAY_AGG(to_id::INTEGER) FROM gens WHERE intellect_id = $1
+                    ) AS gen_to_ids,
+                    (
+                        SELECT ARRAY_AGG(weight::DECIMAL) FROM gens WHERE intellect_id = $1
+                    ) AS gen_weights
+                FROM intellect
+            "#,
+            id
+        )
+        .fetch_one(executor)
+        .await
+        .map_err(|e| ServerError::Database(e))
+        .map(|res| Intellect {
+            in_neuron_count: res.in_neuron_count as u32,
+            out_neuron_count: res.out_neuron_count as u32,
+            neurons: res
+                .neuron_biases
+                .unwrap()
+                .into_iter()
+                .map(|bias| Neuron { bias })
+                .collect(),
+            gens: izip!(
+                res.gen_from_ids.unwrap(),
+                res.gen_to_ids.unwrap(),
+                res.gen_weights.unwrap()
+            )
+            .map(|(from_id, to_id, weight)| Gen {
+                from_id: from_id as u64,
+                to_id: to_id as u64,
+                weight,
+            })
+            .collect(),
+        })
     }
 }

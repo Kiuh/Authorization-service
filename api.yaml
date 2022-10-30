@@ -1,0 +1,501 @@
+openapi: 3.0.0
+info:
+  version: "1.0.0"
+  title: Sells life api
+paths:
+  /User:
+    post:
+      tags:
+        - User
+      description: Войти в аккаунт
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                login:
+                  type: string
+                password:
+                  type: string
+              example:
+                login: User
+                password: Password
+          
+      responses:
+        '200':
+          description: Sucsess
+        '500':
+          description: Error
+    put:
+      tags:
+        - User
+      description: Регестрация
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                login:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+              example:
+                login: User
+                email: someone@gmail.com
+                password: Password
+     
+      responses:
+        '200':
+          description: successfully registered
+
+  /Generations:
+    get:
+      tags:
+          - Generation
+      description: Получить информацию о генерации
+      parameters:
+      - in: query
+        name: login
+        schema:
+          type: string
+        required: true
+        example: user1
+      
+      responses:
+        '200':
+          description: Object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  generations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        map: 
+                          type: string
+                        life_type: 
+                          type: string
+                        feed_type: 
+                          type: string
+                        setup_type: 
+                          type: string
+                        tick: 
+                          type: number
+                        last_send_num: 
+                          type: number
+                        setup_json: 
+                          type: string
+                        last_cell_num:
+                          type: number
+                        description:
+                          type: string
+                      example:
+                        name: Generation1
+                        map: StandartMap
+                        life_type: Repeat_Setup
+                        feed_type: StandartFeeding
+                        setup_type: Random_Generation
+                        tick: 0.1
+                        last_send_num: 0
+                        setup_json: "{ value: 50 }"
+                        last_cell_num: 0
+                        description: Something about Generation
+        '500':
+          description: Error
+  
+  /Generation/{name}/Time:
+    get:
+      tags:
+        - Generation logic
+      description: Получить общее время генерации
+      parameters:
+      - in: query
+        name: login
+        schema:
+          type: string
+        required: true
+        example: User
+      - in: path
+        name: name
+        schema:
+          type: string
+        required: true
+        example: Generation1
+        
+      responses:
+        '200':
+          description: Float
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  time: 
+                    type: number
+                example:
+                  time: 0
+        '500':
+          description: Error
+
+  /Generation/{name}/LifeEnds:
+    get:
+      tags:
+        - Generation logic
+      description: Получить общее время генерации
+      parameters:
+      - in: query
+        name: login
+        schema:
+          type: string
+        required: true
+        example: User
+      - in: path
+        name: name
+        schema:
+          type: string
+        required: true
+        example: Generation1
+        
+      responses:
+        '200':
+          description: Int
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  life_ends: 
+                    type: integer
+                example:
+                  life_ends: 0
+        '500':
+          description: Error
+
+  /Generation/{name}:
+    delete:
+        tags:
+          - Generation
+        description: Удалить генерацию
+        parameters:
+        - in: query
+          name: login
+          schema:
+            type: string
+          required: true
+          example: User
+        - in: path
+          name: name
+          schema:
+            type: string
+          required: true
+          example: Generation1
+          
+        responses:
+          '200':
+            description: Sucsess
+          '500':
+            description: Error
+    
+    patch:
+      tags:
+        - Generation
+      description: Задать новое имя и описание генерации
+      parameters:
+        - in: path
+          name: name
+          schema:
+            type: string
+          required: true
+          example: Generation1
+        - in: query
+          name: login
+          schema:
+            type: string
+          required: true
+          example: User
+      
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+              example:
+                name: Funny Generation
+                description: Blya blya blya
+      
+      responses:
+        '200':
+          description: Sucsess
+        '500':
+          description: Error
+
+  /Generation:
+    put:
+      tags:
+        - Generation
+      description: Создать генерацию
+      parameters:
+      - in: query
+        name: login
+        schema:
+          type: string
+        required: true
+        example: User
+      
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                map:
+                  type: string
+                feed_type:
+                  type: string
+                setup_type:
+                  type: string
+                life_type:
+                  type: string
+                description:
+                  type: string
+                tick:
+                  type: string
+                setup_json:
+                  type: string
+              example:
+                name: Generation2
+                map: StandartMap
+                feed_type: Standart
+                setup_type: Random_Generation
+                life_type: Repeat_Start
+                description: Bla bla bla
+                tick: 0.1
+                setup_json: "[{value: 40}]"
+      
+      responses:
+        '200':
+          description: Sucsess
+        '500':
+          description: Error
+
+  /CreationVariants:
+    get:
+      tags:
+        - Info for create generation
+      description: Получить информацию для создания генерации
+      responses:
+        '200':
+          description: An object with lists of strings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  map_names:
+                    type: array
+                    items:
+                      type: string
+                  life_types:
+                    type: array
+                    items:
+                      type: string
+                  feed_types:
+                    type: array
+                    items:
+                      type: string
+                  ticks:
+                    type: array
+                    items:
+                      type: number
+                  setup_types:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        json:
+                          type: string
+                example:
+                  map_names: ["StandartMap"]
+                  life_types: ["Repeat_Setup"]
+                  feed_types: ["StandartFeeding"]
+                  ticks: [0.1, 0.5]
+                  setup_types: [
+                    name: Random_Generation ,
+                    json: "[{value : 45}]"
+                  ]
+        '500':
+          description: Error
+ 
+  /Generation/{name}/Cells/{sendID}:
+    get:
+      tags:
+        - Generation cells
+      description: Получить все клетки и их состояние на окончание 1 тика
+      parameters:
+      - in: query
+        name: login
+        schema:
+          type: string
+        required: true
+        example: User
+      - in: path
+        name: name
+        schema:
+          type: string
+        required: true
+        example: Generation1
+      - in: path
+        name: sendID
+        schema:
+          type: number
+        required: true
+        example: 0
+      
+      responses:
+        '200':
+          description: Sucsess
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cells:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/cell'
+        '500':
+          description: Error
+    
+    patch:
+      tags:
+        - Generation cells
+      description: Информация о произошедшем в генерации за 1 тик
+      parameters:
+      - in: query
+        name: login
+        schema:
+          type: string
+        required: true
+        example: User
+      - in: path
+        name: name
+        schema:
+          type: string
+        required: true
+        example: Generation1
+      - in: path
+        name: sendID
+        schema:
+          type: number
+        required: true
+        example: 0
+      
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                added:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/cell'
+                changes:
+                  type: array
+                  items:
+                     $ref: '#/components/schemas/module'
+                deleted:
+                  type: array
+                  items:
+                    type: number
+
+      responses:
+        '200':
+          description: Sucsess
+        '500':
+          description: Error
+
+components:
+  schemas:
+    cell:
+      type: object
+      properties:
+        parent_id:
+          type: number
+        own_id:
+          type: number
+        modules:
+          type: array
+          items:
+            $ref: '#/components/schemas/module'
+        intellect:
+          type: object
+          properties:
+            neurons_count:
+              type: number
+            gens_count:
+              type: number
+            input_neurons_count:
+              type: number
+            output_neurons_count:
+              type: number
+            neurons:
+              type: array
+              items:
+                type: object
+                properties:
+                  bias:
+                    type: number
+                    format: float
+                    example: 0.17
+            gens:
+              type: array
+              items:
+                type: object
+                properties:
+                  el_neur_number:
+                    type: number
+                  fin_neur_number:
+                    type: number
+                  weight:
+                    type: number
+                    format: float
+                    example: 0.17
+    module:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: number
+          format: float
+          nullable: true
+          example: 0.17
+
+servers:
+  # Added by API Auto Mocking Plugin
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/KYLTURPRO_1/Cells/1.0.0

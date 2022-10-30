@@ -1,5 +1,6 @@
 pub mod cell;
 pub mod creation_variants;
+pub mod diff;
 pub mod generation;
 pub mod user;
 

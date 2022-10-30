@@ -33,37 +33,6 @@ CREATE TABLE generations(
     UNIQUE(name, owner_id)
 );
 
-DROP TABLE IF EXISTS maps;
-CREATE TABLE maps(
-    id SERIAL,
-    name VARCHAR NOT NULL
-);
-
-DROP TABLE IF EXISTS life_types;
-CREATE TABLE life_types(
-    id SERIAL,
-    name VARCHAR NOT NULL 
-);
-
-DROP TABLE IF EXISTS feed_types;
-CREATE TABLE feed_types(
-    id SERIAL,
-    name VARCHAR NOT NULL 
-);
-
-DROP TABLE IF EXISTS tick_periods;
-CREATE TABLE tick_periods(
-    id SERIAL,
-    period DECIMAL NOT NULL 
-);
-
-DROP TABLE IF EXISTS setup_types;
-CREATE TABLE setup_types(
-    id SERIAL,
-    name VARCHAR NOT NULL,
-    json VARCHAR NOT NULL 
-);
-
 DROP TABLE IF EXISTS cells;
 CREATE TABLE cells(
     id SERIAL,
@@ -116,11 +85,42 @@ CREATE TYPE diff_type AS ENUM ('create_cell', 'change_module_value', 'remove_cel
 DROP TABLE IF EXISTS diffs;
 CREATE TABLE diffs(
     id SERIAL,
-    cell_id INTEGER NOT NULL,
+    cell_id INTEGER NOT NULL, -- global cell id
     tick_id INTEGER NOT NULL,
 
     type diff_type NOT NULL DEFAULT 'change_module_value',
     
     changed_module VARCHAR,
     new_value DECIMAL
+);
+
+DROP TABLE IF EXISTS maps;
+CREATE TABLE maps(
+    id SERIAL,
+    name VARCHAR NOT NULL
+);
+
+DROP TABLE IF EXISTS life_types;
+CREATE TABLE life_types(
+    id SERIAL,
+    name VARCHAR NOT NULL 
+);
+
+DROP TABLE IF EXISTS feed_types;
+CREATE TABLE feed_types(
+    id SERIAL,
+    name VARCHAR NOT NULL 
+);
+
+DROP TABLE IF EXISTS tick_periods;
+CREATE TABLE tick_periods(
+    id SERIAL,
+    period DECIMAL NOT NULL 
+);
+
+DROP TABLE IF EXISTS setup_types;
+CREATE TABLE setup_types(
+    id SERIAL,
+    name VARCHAR NOT NULL,
+    json VARCHAR NOT NULL 
 );

@@ -1,5 +1,38 @@
 {
   "db": "PostgreSQL",
+  "04e0f6866212309b4fbc5d6a40fbde83e9a3ba0207ee45989d78b8c9c21bf5e2": {
+    "describe": {
+      "columns": [
+        {
+          "name": "local_id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "parent_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "intellect_id",
+          "ordinal": 2,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n                SELECT \n                    local_id, \n                    parent_id, \n                    intellect.id AS intellect_id\n                FROM cells \n                INNER JOIN intellect\n                ON cells.local_id = intellect.cell_id\n                WHERE generation_id = $1 \n                AND EXISTS\n                (\n                    SELECT * FROM diffs WHERE\n                    cell_id = cells.id AND\n                    tick_id <= $2 AND\n                    type = 'create_cell'\n                )\n                AND NOT EXISTS \n                (\n                    SELECT * FROM diffs WHERE \n                    cell_id = cells.id AND \n                    tick_id <= $2 AND \n                    type = 'remove_cell'\n                )\n            "
+  },
   "0b8c3af584c8c4707853845caf6d3696edf35fa61034937931d9f1024e9580ae": {
     "describe": {
       "columns": [
@@ -38,6 +71,27 @@
       }
     },
     "query": "SELECT * FROM users WHERE login = $1 AND password = $2"
+  },
+  "149f1c5e5eb5a3d9edb5c19893b4760510897d5c2263843683706cda0bb02faf": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                SELECT generations.id \n                FROM generations \n                INNER JOIN users \n                ON generations.owner_id = users.id \n                WHERE generations.name = $1 AND users.login = $2\n            "
   },
   "20e6fe8b831cf6438e71ef566ebcb5f2e883cb389d9713cf9178317cb163eec5": {
     "describe": {
@@ -132,6 +186,93 @@
     },
     "query": "UPDATE generations \n            SET name = $1, description = $2\n            WHERE name = $3\n            AND owner_id IN (SELECT id FROM users WHERE login = $4)"
   },
+  "70d959d98ced3162e1a70d5930c58dc395bb1d9216d0c981b4efdb4fec4b3e1e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "create_cell",
+                  "change_module_value",
+                  "remove_cell"
+                ]
+              },
+              "name": "diff_type"
+            }
+          },
+          "Int4",
+          "Int4Array",
+          "VarcharArray",
+          "NumericArray"
+        ]
+      }
+    },
+    "query": "\n                INSERT INTO \n                diffs(cell_id, tick_id, type, changed_module, new_value) \n                SELECT id, $1, $2, evnts.module, evnts.new_value FROM \n                (SELECT * FROM UNNEST($4::INTEGER[], $5::VARCHAR[], $6::DECIMAL[]) AS DATA(local_id, module, new_value)) evnts\n                INNER JOIN cells \n                ON evnts.local_id = cells.local_id \n                WHERE cells.generation_id = $3\n            "
+  },
+  "7f7eb01e97d2aa17d1b45f7ec30d691ed7f9d8d2990ede919dc39761faab20d9": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "create_cell",
+                  "change_module_value",
+                  "remove_cell"
+                ]
+              },
+              "name": "diff_type"
+            }
+          },
+          "Int4Array",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n                INSERT INTO \n                diffs(cell_id, tick_id, type) \n                SELECT id, $1, $2 FROM \n                (SELECT * FROM UNNEST($3::INTEGER[]) AS DATA(local_id)) local_ids\n                INNER JOIN cells \n                ON local_ids.local_id = cells.local_id \n                WHERE cells.generation_id = $4\n            "
+  },
+  "83c64061d778ac17714d83a9c5bbefb55facc8aeb0f594a259bd28d730637de3": {
+    "describe": {
+      "columns": [
+        {
+          "name": "module_name",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "initial_value",
+          "ordinal": 1,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "changed_value",
+          "ordinal": 2,
+          "type_info": "Numeric"
+        }
+      ],
+      "nullable": [
+        false,
+        true,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n                    SELECT \n                        modules.name AS module_name,\n                        modules.value AS initial_value,\n                        (\n                            SELECT \n                                new_value \n                            FROM\n                                diffs \n                            WHERE \n                                tick_id <= $2 AND \n                                cell_id = $1 AND \n                                changed_module = modules.name\n                            ORDER BY tick_id DESC\n                            LIMIT 1\n                        ) AS changed_value\n                    FROM modules\n                    WHERE cell_id = $1\n                "
+  },
   "88b72b19daeef2c5dba07d41000d307ff6dd8849455688ccbbaec1ef2e6acdad": {
     "describe": {
       "columns": [],
@@ -146,6 +287,19 @@
       }
     },
     "query": "\n                INSERT INTO \n                gens(intellect_id, from_id, to_id, weight) \n                SELECT * FROM \n                UNNEST($1::INTEGER[], $2::INTEGER[], $3::INTEGER[], $4::DECIMAL[])\n            "
+  },
+  "90beb85c249ca99b293eb4eb0c3df2c2d948a8bd00be2d7451c9d5359daad146": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4Array",
+          "VarcharArray"
+        ]
+      }
+    },
+    "query": "INSERT INTO modules(cell_id, name) SELECT * FROM UNNEST($1::INTEGER[], $2::VARCHAR[])"
   },
   "930ed8606adf9d0b33982a9a308f08cfc49d3ca276c24573860022f1a6ceab0b": {
     "describe": {
@@ -409,5 +563,55 @@
       }
     },
     "query": "\n            SELECT * FROM maps\n            "
+  },
+  "e6f06b5975204911ad370182b8b4d16fcfae1f45a06a334ffa7a699589f19d3d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "in_neuron_count",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "out_neuron_count",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "neuron_biases",
+          "ordinal": 2,
+          "type_info": "NumericArray"
+        },
+        {
+          "name": "gen_from_ids",
+          "ordinal": 3,
+          "type_info": "Int4Array"
+        },
+        {
+          "name": "gen_to_ids",
+          "ordinal": 4,
+          "type_info": "Int4Array"
+        },
+        {
+          "name": "gen_weights",
+          "ordinal": 5,
+          "type_info": "NumericArray"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        null,
+        null,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n                SELECT \n                    in_neuron_count, \n                    out_neuron_count,\n                    (\n                        SELECT ARRAY_AGG(bias::DECIMAL) FROM neurons WHERE intellect_id = $1\n                    ) AS neuron_biases,\n                    (\n                        SELECT ARRAY_AGG(from_id::INTEGER) FROM gens WHERE intellect_id = $1\n                    ) AS gen_from_ids,\n                    (\n                        SELECT ARRAY_AGG(to_id::INTEGER) FROM gens WHERE intellect_id = $1\n                    ) AS gen_to_ids,\n                    (\n                        SELECT ARRAY_AGG(weight::DECIMAL) FROM gens WHERE intellect_id = $1\n                    ) AS gen_weights\n                FROM intellect\n            "
   }
 }
