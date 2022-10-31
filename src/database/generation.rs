@@ -1,4 +1,4 @@
-use bigdecimal::BigDecimal;
+use bigdecimal::{BigDecimal, FromPrimitive};
 use sqlx::{Executor, Postgres};
 
 use crate::error::ServerError;
@@ -11,9 +11,9 @@ pub struct Generation {
     pub feed_type: String,
     pub setup_type: String,
     pub tick_period: BigDecimal,
-    pub last_send_num: u64, //
-    pub setup_json: String, //
-    pub last_cell_num: u64, //
+    pub last_send_num: i64,
+    pub setup_json: String,
+    pub last_cell_num: i64,
     pub description: String,
 }
 
@@ -25,10 +25,13 @@ impl Generation {
         Ok(sqlx::query!(
             r#"
             SELECT 
-            map_id, life_type, feed_type, setup_type, tick_period, description, name
+                map_id, life_type, feed_type, setup_type, tick_period, 
+                description, name, setup_json, last_send_num, last_cell_num
             FROM 
             (
-                SELECT map_id, life_type, feed_type, setup_type, tick_period, description, name, usr.id
+                SELECT 
+                    map_id, life_type, feed_type, setup_type, tick_period, description, 
+                    name, usr.id, setup_json, last_send_num, last_cell_num
                 FROM
                 generations
                 INNER JOIN 
@@ -51,9 +54,9 @@ impl Generation {
             feed_type: res.feed_type,
             setup_type: res.setup_type,
             tick_period: res.tick_period,
-            last_send_num: 0,
-            setup_json: "".to_string(),
-            last_cell_num: 0,
+            last_send_num: res.last_send_num as i64,
+            setup_json: res.setup_json,
+            last_cell_num: res.last_cell_num as i64,
             description: res.description,
         })
         .collect())
@@ -101,6 +104,67 @@ impl Generation {
         .map_err(|e| ServerError::Database(e))?
         .rows_affected()
             == 1)
+    }
+
+    pub async fn get_time<'a, E>(
+        name: &str,
+        login: &str,
+        executor: E,
+    ) -> crate::error::Result<BigDecimal>
+    where
+        E: Executor<'a, Database = Postgres>,
+    {
+        let ticks_and_period = sqlx::query!(
+            r#" 
+                SELECT 
+                    tick_period, last_send_num 
+                FROM generations
+                INNER JOIN users
+                ON generations.owner_id = users.id
+                WHERE generations.name = $1 AND users.login = $2 
+            "#,
+            name,
+            login
+        )
+        .fetch_one(executor)
+        .await
+        .map_err(|e| ServerError::Database(e))?;
+
+        Ok(ticks_and_period.tick_period
+            * BigDecimal::from_i64(ticks_and_period.last_send_num).unwrap())
+    }
+
+    pub async fn update_last_send<'a, E>(
+        name: &str,
+        login: &str,
+        send_num: i64,
+        cell_num: i64,
+        executor: E,
+    ) -> crate::error::Result
+    where
+        E: Executor<'a, Database = Postgres>,
+    {
+        sqlx::query!(
+            r#" 
+                UPDATE 
+                    generations
+                SET 
+                    last_send_num = GREATEST($1, last_send_num), 
+                    last_cell_num = GREATEST($2, last_cell_num)
+                WHERE 
+                    name = $3 AND 
+                    owner_id = (SELECT id FROM users WHERE login = $4)
+            "#,
+            send_num,
+            cell_num,
+            name,
+            login,
+        )
+        .execute(executor)
+        .await
+        .map_err(|e| ServerError::Database(e))?;
+
+        Ok(())
     }
 }
 

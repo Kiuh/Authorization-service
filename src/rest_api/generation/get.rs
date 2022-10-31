@@ -24,9 +24,9 @@ struct GenerationData {
     pub feed_type: String,
     pub setup_type: String,
     pub tick: BigDecimal,
-    pub last_send_num: u64,
+    pub last_send_num: i64,
     pub setup_json: String,
-    pub last_cell_num: u64,
+    pub last_cell_num: i64,
     pub description: String,
 }
 

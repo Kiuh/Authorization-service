@@ -11,8 +11,8 @@ use module::{Module, ModuleWithCellId};
 use self::intellect::IntellectWithCellId;
 
 pub struct Cell {
-    pub parent_id: u64,
-    pub local_id: u64,
+    pub parent_id: i64,
+    pub local_id: i64,
     pub modules: Vec<Module>,
     pub intellect: Intellect,
 }
@@ -220,8 +220,8 @@ impl Cell {
             .collect();
 
             cells.push(Cell {
-                parent_id: prefetched.parent_id as u64,
-                local_id: prefetched.local_id as u64,
+                parent_id: prefetched.parent_id as i64,
+                local_id: prefetched.local_id as i64,
                 intellect: Intellect::fetch(prefetched.intellect_id, executor.clone()).await?,
                 modules,
             });

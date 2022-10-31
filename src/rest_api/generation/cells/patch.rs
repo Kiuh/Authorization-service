@@ -7,6 +7,7 @@ use crate::database::cell::Cell;
 use crate::database::diff::created::Created;
 use crate::database::diff::module_changed::ModuleChanged;
 use crate::database::diff::removed::Removed;
+use crate::database::generation::Generation;
 use crate::error::ResponseError;
 use crate::{rest_api::into_success_response, server_state::ServerState};
 use actix_web::{web, HttpResponse};
@@ -89,6 +90,8 @@ pub async fn execute(
     .await
     .map_err(|e| e.http_status_500())?;
 
+    let max_added_id = added_ids.iter().max().cloned().unwrap_or(-1);
+
     Created::insert_many(
         added_ids
             .into_iter()
@@ -131,6 +134,16 @@ pub async fn execute(
         &login,
         &generation_name,
         send_id,
+        &st.db_connection.pool,
+    )
+    .await
+    .map_err(|e| e.http_status_500())?;
+
+    Generation::update_last_send(
+        &generation_name,
+        &login,
+        send_id as i64,
+        max_added_id,
         &st.db_connection.pool,
     )
     .await

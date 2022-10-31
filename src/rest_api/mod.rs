@@ -18,6 +18,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         web::scope("Generation")
             .route("", web::put().to(generation::create::execute))
             .route("{name}", web::delete().to(generation::remove::execute))
+            .route("{name}/Time", web::get().to(generation::get_time::execute))
             .route(
                 "{name}",
                 web::patch().to(generation::change_name_description::execute),

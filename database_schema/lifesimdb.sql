@@ -25,7 +25,6 @@ CREATE TABLE generations(
     setup_json VARCHAR NOT NULL,
 
     tick_period DECIMAL NOT NULL,
-    time DECIMAL NOT NULL DEFAULT 0,
 
     last_send_num BIGINT NOT NULL DEFAULT 0,
     last_cell_num BIGINT NOT NULL DEFAULT 0,

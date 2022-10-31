@@ -106,6 +106,21 @@
     },
     "query": "DELETE FROM generations WHERE name = $1 AND owner_id IN (SELECT id FROM users WHERE login = $2)"
   },
+  "222278f40ff8fd092b2005496fe91247436f5f2d0ea8cfa29591fc5f8f89bf9c": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int8",
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": " \n                UPDATE \n                    generations\n                SET \n                    last_send_num = GREATEST($1, last_send_num), \n                    last_cell_num = GREATEST($2, last_cell_num)\n                WHERE \n                    name = $3 AND \n                    owner_id = (SELECT id FROM users WHERE login = $4)\n            "
+  },
   "32f658c9aaf0c0137768314718dc54927bcb0da37ccf1cbb3b45ad64c7df708f": {
     "describe": {
       "columns": [
@@ -185,6 +200,107 @@
       }
     },
     "query": "UPDATE generations \n            SET name = $1, description = $2\n            WHERE name = $3\n            AND owner_id IN (SELECT id FROM users WHERE login = $4)"
+  },
+  "563c79d1609fe1faf96ae01e992c3c7c7fa51376f6a9bf6582fe34216287dfd6": {
+    "describe": {
+      "columns": [
+        {
+          "name": "map_id",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "life_type",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "feed_type",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "setup_type",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "tick_period",
+          "ordinal": 4,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "description",
+          "ordinal": 5,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "name",
+          "ordinal": 6,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "setup_json",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "last_send_num",
+          "ordinal": 8,
+          "type_info": "Int8"
+        },
+        {
+          "name": "last_cell_num",
+          "ordinal": 9,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n            SELECT \n                map_id, life_type, feed_type, setup_type, tick_period, \n                description, name, setup_json, last_send_num, last_cell_num\n            FROM \n            (\n                SELECT \n                    map_id, life_type, feed_type, setup_type, tick_period, description, \n                    name, usr.id, setup_json, last_send_num, last_cell_num\n                FROM\n                generations\n                INNER JOIN \n                (\n                    SELECT id FROM users WHERE login = $1\n                ) usr\n                ON generations.owner_id = usr.id \n            ) gen_usr\n            "
+  },
+  "6e9f4df43833ba39d12baf9b4566e0adb7ae5d48c795f19b3fd9f3d8129436ce": {
+    "describe": {
+      "columns": [
+        {
+          "name": "tick_period",
+          "ordinal": 0,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "last_send_num",
+          "ordinal": 1,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": " \n                SELECT \n                    tick_period, last_send_num \n                FROM generations\n                INNER JOIN users\n                ON generations.owner_id = users.id\n                WHERE generations.name = $1 AND users.login = $2 \n            "
   },
   "70d959d98ced3162e1a70d5930c58dc395bb1d9216d0c981b4efdb4fec4b3e1e": {
     "describe": {
@@ -402,62 +518,6 @@
       }
     },
     "query": "INSERT INTO users (login, password, email) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING"
-  },
-  "aeb761425009fdcac87491d61da8eeace5e736af16da03c6255f121db5c4f59f": {
-    "describe": {
-      "columns": [
-        {
-          "name": "map_id",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "life_type",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "feed_type",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "setup_type",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "tick_period",
-          "ordinal": 4,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "description",
-          "ordinal": 5,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "name",
-          "ordinal": 6,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      }
-    },
-    "query": "\n            SELECT \n            map_id, life_type, feed_type, setup_type, tick_period, description, name\n            FROM \n            (\n                SELECT map_id, life_type, feed_type, setup_type, tick_period, description, name, usr.id\n                FROM\n                generations\n                INNER JOIN \n                (\n                    SELECT id FROM users WHERE login = $1\n                ) usr\n                ON generations.owner_id = usr.id \n            ) gen_usr\n            "
   },
   "c14a7732d76258370088ac114acf32d64ea787a70b003a80f99faf7a3bc28e6c": {
     "describe": {

@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct Cell {
-    pub parent_id: u64,
-    pub own_id: u64,
+    pub parent_id: i64,
+    pub own_id: i64,
     pub modules: Vec<Module>,
     pub intellect: Intellect,
 }

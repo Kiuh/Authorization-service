@@ -1,7 +1,8 @@
 use crate::database::generation::Generation;
-use crate::error::{ResponseError, ServerError};
+use crate::error::ResponseError;
 use crate::{rest_api::into_success_response, server_state::ServerState};
 use actix_web::{web, HttpResponse};
+use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -10,7 +11,9 @@ pub struct QueryData {
 }
 
 #[derive(Serialize, Deserialize)]
-struct Response {}
+struct Response {
+    pub time: BigDecimal,
+}
 into_success_response!(Response);
 
 pub async fn execute(
@@ -21,15 +24,9 @@ pub async fn execute(
     let name = name.into_inner();
     let login = login.into_inner().login;
 
-    let removed = Generation::remove(&name, &login, &st.db_connection.pool)
+    let time = Generation::get_time(&name, &login, &st.db_connection.pool)
         .await
         .map_err(|e| e.http_status_500())?;
 
-    if removed {
-        Response {}.into()
-    } else {
-        Err(ServerError::GenerationNotFound(name)
-            .http_status_400()
-            .into())
-    }
+    Response { time }.into()
 }
