@@ -299,21 +299,6 @@ paths:
           description: Sucsess
         "500":
           description: Error
-
-  /Config:
-    get:
-      tags:
-      - Configurate info
-      description: Получить информацию для начала работы приложения
-      responses:
-        "200":
-          description: Sucsess
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GET_Config_Response_200'
-        "500":
-          description: Error
   
 components:
   schemas:
@@ -358,7 +343,7 @@ components:
               map:
                 type: object
                 properties:
-                  tp_name:
+                  perfab_name:
                     type: string
                     example: StandartMap
                   json:
@@ -367,7 +352,7 @@ components:
               life_type:
                 type: object
                 properties:
-                  tp_name:
+                  perfab_name:
                     type: string
                     example: RepeatLifeType
                   json:
@@ -376,7 +361,7 @@ components:
               feed_type:
                 type: object
                 properties:
-                  tp_name:
+                  perfab_name:
                     type: string
                     example: StandartFeeding
                   json:
@@ -385,7 +370,7 @@ components:
               setup_type:
                 type: object
                 properties:
-                  tp_name:
+                  perfab_name:
                     type: string
                     example: RandomStart
                   json:
@@ -434,7 +419,7 @@ components:
             prefab_name:
               type: string
               example: StandartMap
-            unique_json:
+            json:
               type: string
               example: '[{value : 45}]'
         feed_type:
@@ -443,7 +428,7 @@ components:
             prefab_name:
               type: string
               example: StandartFeeding
-            unique_json:
+            json:
               type: string
               example: '[{value : 45}]'
         setup_type:
@@ -452,7 +437,7 @@ components:
             prefab_name:
               type: string
               example: RandomSetup
-            unique_json:
+            json:
               type: string
               example: '[{value : 45}]'
         life_type:
@@ -461,7 +446,7 @@ components:
             prefab_name:
               type: string
               example: RepeatLifeType
-            unique_json:
+            json:
               type: string
               example: '[{value : 45}]'
         description:
@@ -470,71 +455,6 @@ components:
         tick:
           type: number
           example: 0.1
-    
-    GET_Config_Response_200:
-      type: object
-      properties:
-        map_names:
-          type: array
-          items:
-            type: object
-            properties:
-              name:
-                type: string
-                example: Квадрат
-              prefab_name:
-                type: string
-                example: StandartMap
-              json:
-                type: string
-                example: '[{value : 45}]'
-        life_types:
-          type: array
-          items:
-            type: object
-            properties:
-              name:
-                type: string
-                example: Повтор начала
-              prefab_name:
-                type: string
-                example: Repeat_Setup
-              json:
-                type: string
-                example: '[{value : 45}]'
-        feed_types:
-          type: array
-          items:
-            type: object
-            properties:
-              name:
-                type: string
-                example: По стандарту
-              prefab_name:
-                type: string
-                example: StandartFeeding
-              json:
-                type: string
-                example: '[{value : 45}]'
-        ticks:
-          type: array
-          items:
-            type: number
-            example: 0.1, 0.5
-        setup_types:
-          type: array
-          items:
-            type: object
-            properties:
-              name:
-                type: string
-                example: Случайная генерация
-              prefab_name:
-                type: string
-                example: Random_Generation
-              json:
-                type: string
-                example: '[{value : 45}]'
     
     GET_GenerationCellsInTick_Response_200:
       type: object
