@@ -18,11 +18,15 @@ CREATE TABLE generations(
     owner_id INTEGER NOT NULL,
     description VARCHAR NOT NULL DEFAULT '',
 
-    map_id VARCHAR NOT NULL,
-    life_type VARCHAR NOT NULL,
-    feed_type VARCHAR NOT NULL,
-    setup_type VARCHAR NOT NULL,
-    setup_json VARCHAR NOT NULL,
+    map_prefab VARCHAR NOT NULL,
+    life_type_prefab VARCHAR NOT NULL,
+    feed_type_prefab VARCHAR NOT NULL,
+    setup_type_prefab VARCHAR NOT NULL,
+
+    map_json VARCHAR NOT NULL,
+    life_type_json VARCHAR NOT NULL,
+    feed_type_json VARCHAR NOT NULL,
+    setup_type_json VARCHAR NOT NULL,
 
     tick_period DECIMAL NOT NULL,
 
@@ -91,35 +95,4 @@ CREATE TABLE diffs(
     
     changed_module VARCHAR,
     new_value DECIMAL
-);
-
-DROP TABLE IF EXISTS maps;
-CREATE TABLE maps(
-    id SERIAL,
-    name VARCHAR NOT NULL
-);
-
-DROP TABLE IF EXISTS life_types;
-CREATE TABLE life_types(
-    id SERIAL,
-    name VARCHAR NOT NULL 
-);
-
-DROP TABLE IF EXISTS feed_types;
-CREATE TABLE feed_types(
-    id SERIAL,
-    name VARCHAR NOT NULL 
-);
-
-DROP TABLE IF EXISTS tick_periods;
-CREATE TABLE tick_periods(
-    id SERIAL,
-    period DECIMAL NOT NULL 
-);
-
-DROP TABLE IF EXISTS setup_types;
-CREATE TABLE setup_types(
-    id SERIAL,
-    name VARCHAR NOT NULL,
-    json VARCHAR NOT NULL 
 );

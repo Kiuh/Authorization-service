@@ -5,6 +5,8 @@ use actix_web::{web, HttpResponse};
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 
+use super::{FeedTypeJson, LifeTypeJson, MapJson, SetupTypeJson};
+
 #[derive(Serialize, Deserialize)]
 pub struct QueryData {
     pub login: String,
@@ -12,20 +14,21 @@ pub struct QueryData {
 
 #[derive(Serialize, Deserialize)]
 struct Response {
-    pub generations: Vec<GenerationData>,
+    pub generations: Vec<GenerationJson>,
 }
 into_success_response!(Response);
 
 #[derive(Serialize, Deserialize)]
-struct GenerationData {
+struct GenerationJson {
     pub name: String,
-    pub map: String,
-    pub life_type: String,
-    pub feed_type: String,
-    pub setup_type: String,
+
+    pub map: MapJson,
+    pub life_type: LifeTypeJson,
+    pub feed_type: FeedTypeJson,
+    pub setup_type: SetupTypeJson,
+
     pub tick: BigDecimal,
     pub last_send_num: i64,
-    pub setup_json: String,
     pub last_cell_num: i64,
     pub description: String,
 }
@@ -41,15 +44,26 @@ pub async fn execute(
     Response {
         generations: res_data
             .into_iter()
-            .map(|res_data| GenerationData {
+            .map(|res_data| GenerationJson {
                 name: res_data.name,
-                map: res_data.map_id,
-                life_type: res_data.life_type,
-                feed_type: res_data.feed_type,
-                setup_type: res_data.setup_type,
+                map: MapJson {
+                    prefab_name: res_data.map_prefab,
+                    json: res_data.map_json,
+                },
+                life_type: LifeTypeJson {
+                    prefab_name: res_data.life_type_prefab,
+                    json: res_data.life_type_json,
+                },
+                feed_type: FeedTypeJson {
+                    prefab_name: res_data.feed_type_prefab,
+                    json: res_data.feed_type_json,
+                },
+                setup_type: SetupTypeJson {
+                    prefab_name: res_data.setup_type_prefab,
+                    json: res_data.setup_type_json,
+                },
                 tick: res_data.tick_period,
                 last_send_num: res_data.last_send_num,
-                setup_json: res_data.setup_json,
                 last_cell_num: res_data.last_cell_num,
                 description: res_data.description,
             })

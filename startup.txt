@@ -12,9 +12,14 @@ curl -X POST -v -H "Content-Type: application/json" -d '
 curl -X PUT -v -H "Content-Type: application/json" -d '
 {
   "login": "Jessica",
-  "email": "someone@gmail.com",
+  "email": "mminelleo@gmail.com",
   "password": "123Password"
-}' localhost:27503/User
+}' localhost:8080/User
+
+curl -X PATCH -v -H "Content-Type: application/json" -d '
+{
+  "email": "mertwole@gmail.com",
+}' localhost:8080/User
 ##################################
 
 ######## Get Generations data ####

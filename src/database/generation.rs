@@ -6,13 +6,19 @@ use crate::error::ServerError;
 #[derive(Default)]
 pub struct Generation {
     pub name: String,
-    pub map_id: String,
-    pub life_type: String,
-    pub feed_type: String,
-    pub setup_type: String,
+
+    pub map_prefab: String,
+    pub life_type_prefab: String,
+    pub feed_type_prefab: String,
+    pub setup_type_prefab: String,
+
+    pub map_json: String,
+    pub life_type_json: String,
+    pub feed_type_json: String,
+    pub setup_type_json: String,
+
     pub tick_period: BigDecimal,
     pub last_send_num: i64,
-    pub setup_json: String,
     pub last_cell_num: i64,
     pub description: String,
 }
@@ -25,13 +31,15 @@ impl Generation {
         Ok(sqlx::query!(
             r#"
             SELECT 
-                map_id, life_type, feed_type, setup_type, tick_period, 
-                description, name, setup_json, last_send_num, last_cell_num
+                map_prefab, life_type_prefab, feed_type_prefab, setup_type_prefab,
+                map_json, life_type_json, feed_type_json, setup_type_json,
+                tick_period, description, name, last_send_num, last_cell_num
             FROM 
             (
                 SELECT 
-                    map_id, life_type, feed_type, setup_type, tick_period, description, 
-                    name, usr.id, setup_json, last_send_num, last_cell_num
+                    map_prefab, life_type_prefab, feed_type_prefab, setup_type_prefab,
+                    map_json, life_type_json, feed_type_json, setup_type_json,
+                    tick_period, description, name, last_send_num, last_cell_num, usr.id
                 FROM
                 generations
                 INNER JOIN 
@@ -49,13 +57,19 @@ impl Generation {
         .into_iter()
         .map(|res| Generation {
             name: res.name,
-            map_id: res.map_id,
-            life_type: res.life_type,
-            feed_type: res.feed_type,
-            setup_type: res.setup_type,
+
+            map_prefab: res.map_prefab,
+            life_type_prefab: res.life_type_prefab,
+            feed_type_prefab: res.feed_type_prefab,
+            setup_type_prefab: res.setup_type_prefab,
+
+            map_json: res.map_json,
+            life_type_json: res.life_type_json,
+            feed_type_json: res.feed_type_json,
+            setup_type_json: res.setup_type_json,
+
             tick_period: res.tick_period,
             last_send_num: res.last_send_num as i64,
-            setup_json: res.setup_json,
             last_cell_num: res.last_cell_num as i64,
             description: res.description,
         })
@@ -85,18 +99,26 @@ impl Generation {
         Ok(sqlx::query!(
             r#"
                 INSERT INTO generations
-                (name, owner_id, map_id, life_type, feed_type, setup_type, tick_period, setup_json, description) 
+                (
+                    name, owner_id, 
+                    map_prefab, life_type_prefab, feed_type_prefab, setup_type_prefab, 
+                    map_json, life_type_json, feed_type_json, setup_type_json,
+                    tick_period, description
+                ) 
                 VALUES 
-                ($1, (SELECT id FROM users WHERE login = $2), $3, $4, $5, $6, $7, $8, $9)
+                ($1, (SELECT id FROM users WHERE login = $2), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             "#,
             &self.name,
             login,
-            &self.map_id,
-            &self.life_type,
-            &self.feed_type,
-            &self.setup_type,
+            &self.map_prefab,
+            &self.life_type_prefab,
+            &self.feed_type_prefab,
+            &self.setup_type_prefab,
+            &self.map_json,
+            &self.life_type_json,
+            &self.feed_type_json,
+            &self.setup_type_json,
             &self.tick_period,
-            &self.setup_json,
             &self.description
         )
         .execute(executor)

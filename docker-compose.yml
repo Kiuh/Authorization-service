@@ -30,6 +30,8 @@ services:
     environment:
       APP_ENDPOINT: "0.0.0.0:27503"
       DATABASE_URL: "postgresql://postgres:postgres@lifesim_db:5432/lifesimdb"
+      VERIFICATION_EMAIL: "${VERIFICATION_EMAIL}"
+      VERIFICATION_EMAIL_PASSWORD: "${VERIFICATION_EMAIL_PASSWORD}"
     external_links:
       - lifesim_db:lifesim_db
     healthcheck:

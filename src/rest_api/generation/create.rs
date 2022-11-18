@@ -5,16 +5,17 @@ use actix_web::{web, HttpResponse};
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 
+use super::{FeedTypeJson, LifeTypeJson, MapJson, SetupTypeJson};
+
 #[derive(Serialize, Deserialize)]
 pub struct Request {
     pub name: String,
-    pub map: String,
-    pub feed_type: String,
-    pub setup_type: String,
-    pub life_type: String,
+    pub map: MapJson,
+    pub feed_type: FeedTypeJson,
+    pub setup_type: SetupTypeJson,
+    pub life_type: LifeTypeJson,
     pub description: String,
     pub tick: BigDecimal,
-    pub setup_json: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -35,13 +36,16 @@ pub async fn execute(
 
     let generation = Generation {
         name: data.name,
-        map_id: data.map,
-        feed_type: data.feed_type,
-        setup_type: data.setup_type,
-        life_type: data.life_type,
+        map_prefab: data.map.prefab_name,
+        map_json: data.map.json,
+        feed_type_prefab: data.feed_type.prefab_name,
+        feed_type_json: data.feed_type.json,
+        setup_type_prefab: data.setup_type.prefab_name,
+        setup_type_json: data.setup_type.json,
+        life_type_prefab: data.life_type.prefab_name,
+        life_type_json: data.life_type.json,
         description: data.description,
         tick_period: data.tick,
-        setup_json: data.setup_json,
         ..Generation::default()
     };
 

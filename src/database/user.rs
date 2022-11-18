@@ -52,4 +52,19 @@ impl User {
                 .map(|res| res.id as i64),
         )
     }
+
+    pub async fn get_password<'a, E>(
+        email: &str,
+        executor: E,
+    ) -> crate::error::Result<Option<String>>
+    where
+        E: Executor<'a, Database = Postgres>,
+    {
+        Ok(
+            sqlx::query!(r#"SELECT password FROM users WHERE email = $1"#, email)
+                .fetch_optional(executor)
+                .await?
+                .map(|res| res.password),
+        )
+    }
 }

@@ -101,6 +101,12 @@ pub enum ServerError {
 
     #[error("Failed to create generation")]
     InsertGeneration,
+
+    #[error("Failed to initialize mail client: {0}")]
+    MailInit(String),
+
+    #[error("Failed to send e-mail: {0}")]
+    MailSend(String),
 }
 
 impl ResponseError for ServerError {
@@ -114,6 +120,8 @@ impl ResponseError for ServerError {
             ServerError::GenerationNotFound(_) => 6,
             ServerError::UpdateGenerationNameAndDescription(_) => 7,
             ServerError::InsertGeneration => 8,
+            ServerError::MailInit(_) => 9,
+            ServerError::MailSend(_) => 10,
         }
     }
 }

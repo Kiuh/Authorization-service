@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 
 pub mod alive;
 pub mod common_types;
-pub mod creation_variants;
 pub mod generation;
 pub mod user;
 
@@ -11,7 +10,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("User")
             .route("", web::post().to(user::login::execute))
-            .route("", web::put().to(user::register::execute)),
+            .route("", web::put().to(user::register::execute))
+            .route("", web::patch().to(user::recover_password::execute)),
     )
     .service(web::scope("/Generations").route("", web::get().to(generation::get::execute)))
     .service(
@@ -32,11 +32,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
                 web::patch().to(generation::cells::patch::execute),
             ),
     )
-    .service(web::scope("Alive").route("", web::get().to(alive::execute)))
-    .service(
-        web::scope("CreationVariants")
-            .route("", web::get().to(creation_variants::get_variants::execute)),
-    );
+    .service(web::scope("Alive").route("", web::get().to(alive::execute)));
 }
 
 #[derive(Serialize, Deserialize)]
