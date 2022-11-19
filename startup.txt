@@ -18,7 +18,7 @@ curl -X PUT -v -H "Content-Type: application/json" -d '
 
 curl -X PATCH -v -H "Content-Type: application/json" -d '
 {
-  "email": "mertwole@gmail.com",
+  "email": "mertwole@gmail.com"
 }' localhost:8080/User
 ##################################
 

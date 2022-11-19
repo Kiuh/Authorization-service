@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod alive;
 pub mod common_types;
+pub mod creation_variants;
 pub mod generation;
 pub mod user;
 
@@ -33,6 +34,10 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             ),
     )
     .service(web::scope("Alive").route("", web::get().to(alive::execute)));
+    // .service(
+    //     web::scope("CreationVariants")
+    //         .route("", web::get().to(creation_variants::get_variants::execute)),
+    // );
 }
 
 #[derive(Serialize, Deserialize)]
