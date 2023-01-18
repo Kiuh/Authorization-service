@@ -1,46 +1,70 @@
 version: '3'
 services:
-  lifesim_db:
+  common_database:
     restart: always
-    hostname: lifesim_db
+    hostname: common_database
     image: postgres:14
     ports:
       - '127.0.0.1:27500:5432'
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=lifesimdb
+      - POSTGRES_DB=common_database
     volumes:
-      - ./database_schema/lifesimdb.sql:/docker-entrypoint-initdb.d/lifesimdb.sql:z
-      - ./database_schema/test_data.sql:/docker-entrypoint-initdb.d/test_data.sql:z
+      - ./core_service/database_schema/schema.sql:/docker-entrypoint-initdb.d/core_schema.sql:z
+      - ./core_service/database_schema/test_data.sql:/docker-entrypoint-initdb.d/core_test_data.sql:z
+      - ./auth_service/database_schema/schema.sql:/docker-entrypoint-initdb.d/auth_schema.sql:z
+      - ./auth_service/database_schema/test_data.sql:/docker-entrypoint-initdb.d/auth_test_data.sql:z
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
       interval: 10s
       timeout: 5s
       retries: 10
     
-  lifesim_backend:
+  core_service:
     restart: always
-    hostname: lifesim
+    hostname: core_service
     ports:
       - '127.0.0.1:27503:27503'
     build:
-      context: ./
+      context: ./core_service
       dockerfile: ./Dockerfile
     environment:
       APP_ENDPOINT: "0.0.0.0:27503"
-      DATABASE_URL: "postgresql://postgres:postgres@lifesim_db:5432/lifesimdb"
-      VERIFICATION_EMAIL: "${VERIFICATION_EMAIL}"
-      VERIFICATION_EMAIL_PASSWORD: "${VERIFICATION_EMAIL_PASSWORD}"
+      DATABASE_URL: "postgresql://postgres:postgres@common_database:5432/common_database"
     external_links:
-      - lifesim_db:lifesim_db
+      - common_database:common_database
     healthcheck:
-      test: curl --fail lifesim:27503/Alive || exit 1
+      test: curl --fail core_service:27503/Alive || exit 1
       interval: 10s
       timeout: 5s
       retries: 10
     depends_on:
-      - lifesim_db
+      - common_database
+
+  auth_service:
+    restart: always
+    hostname: auth_service
+    ports:
+      - '127.0.0.1:27504:27504'
+    build:
+      context: ./auth_service
+      dockerfile: ./Dockerfile
+    environment:
+      APP_ENDPOINT: "0.0.0.0:27504"
+      DATABASE_URL: "postgresql://postgres:postgres@common_database:5432/common_database"
+      VERIFICATION_EMAIL: "${VERIFICATION_EMAIL}"
+      VERIFICATION_EMAIL_PASSWORD: "${VERIFICATION_EMAIL_PASSWORD}"
+    external_links:
+      - common_database:common_database
+    healthcheck:
+      test: curl --fail auth_service:27504/Alive || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      - core_service
+      - common_database
 
 networks:
   default:

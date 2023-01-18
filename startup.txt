@@ -1,4 +1,11 @@
+Generating keys:
+private:
+  ssh-keygen -t rsa -b 2048 -m PEM -N ""
+public: 
+  ssh-keygen -y -e -m pem
+
 cargo run --release -- --app-endpoint localhost:8080 --database-url postgresql://postgres:postgres@localhost:5432/lifesimdb
+cargo run --release -- --app-endpoint localhost:8080 --database-url postgresql://postgres:postgres@localhost:5432/authdb --verification-email mail --verification-email-password pass
 
 ############## Log in ############
 curl -X POST -v -H "Content-Type: application/json" -d '
