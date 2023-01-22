@@ -19,18 +19,13 @@ pub struct Request {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct QueryData {
-    pub user_id: i32,
-}
-
-#[derive(Serialize, Deserialize)]
 struct Response {}
 into_success_response!(Response);
 
 pub async fn execute(
     st: web::Data<ServerState>,
     data: web::Json<Request>,
-    user_id: web::Query<QueryData>,
+    user_id: web::Path<i32>,
 ) -> actix_web::Result<HttpResponse> {
     let data = data.into_inner();
 
@@ -50,7 +45,7 @@ pub async fn execute(
     };
 
     let inserted = generation
-        .insert(user_id.into_inner().user_id, &st.db_connection.pool)
+        .insert(user_id.into_inner(), &st.db_connection.pool)
         .await
         .map_err(|e| e.http_status_500())?;
 

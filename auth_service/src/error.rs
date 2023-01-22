@@ -104,6 +104,24 @@ pub enum ServerError {
 
     #[error("Failed to decode {parameter_name} from rsa")]
     RsaDecode { parameter_name: String },
+
+    #[error("Wrong encoding for {parameter_name}: expected UTF-8")]
+    WrongTextEncoding { parameter_name: String },
+
+    #[error("Wrong access code")]
+    WrongAccessCode,
+
+    #[error("Wrong request")]
+    WrongRequest,
+
+    #[error("Unsupported HTTP method")]
+    UnsupportedHttpMethod,
+
+    #[error("Failed to send request to core service")]
+    SendRequestToCoreService,
+
+    #[error("Wrong signature")]
+    WrongSignature,
 }
 
 impl ResponseError for ServerError {
@@ -119,6 +137,12 @@ impl ResponseError for ServerError {
             ServerError::WrongNonce => 11,
             ServerError::Base58Decode { .. } => 12,
             ServerError::RsaDecode { .. } => 13,
+            ServerError::WrongTextEncoding { .. } => 14,
+            ServerError::WrongAccessCode { .. } => 15,
+            ServerError::WrongRequest => 16,
+            ServerError::UnsupportedHttpMethod => 17,
+            ServerError::SendRequestToCoreService => 18,
+            ServerError::WrongSignature => 19,
         }
     }
 }

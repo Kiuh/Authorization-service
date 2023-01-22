@@ -1,4 +1,4 @@
-pub mod keys;
+pub mod private_key;
 pub mod user;
 
 use sqlx::PgPool;

@@ -8,11 +8,6 @@ use serde::{Deserialize, Serialize};
 use super::{FeedTypeJson, LifeTypeJson, MapJson, SetupTypeJson};
 
 #[derive(Serialize, Deserialize)]
-pub struct QueryData {
-    pub user_id: i32,
-}
-
-#[derive(Serialize, Deserialize)]
 struct Response {
     pub generations: Vec<GenerationJson>,
 }
@@ -35,9 +30,9 @@ struct GenerationJson {
 
 pub async fn execute(
     st: web::Data<ServerState>,
-    user_id: web::Query<QueryData>,
+    user_id: web::Path<i32>,
 ) -> actix_web::Result<HttpResponse> {
-    let user_id = user_id.into_inner().user_id;
+    let user_id = user_id.into_inner();
     let res_data = Generation::fetch_all(user_id, &st.db_connection.pool)
         .await
         .map_err(|e| e.http_status_500())?;

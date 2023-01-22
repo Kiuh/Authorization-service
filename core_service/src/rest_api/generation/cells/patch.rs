@@ -14,11 +14,6 @@ use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
-pub struct QueryData {
-    pub user_id: i32,
-}
-
-#[derive(Serialize, Deserialize)]
 pub struct Request {
     pub added: Vec<JsonCell>,
     pub changes: Vec<Diff>,
@@ -31,13 +26,11 @@ into_success_response!(Response);
 
 pub async fn execute(
     st: web::Data<ServerState>,
-    path: web::Path<(String, i32)>, // generation_name / sendId
-    user_id: web::Query<QueryData>,
+    path: web::Path<(i32, String, i32)>, // user_id, name, send_id
     data: web::Json<Request>,
 ) -> actix_web::Result<HttpResponse> {
     let data = data.into_inner();
-    let user_id = user_id.into_inner().user_id;
-    let (generation_name, send_id) = path.into_inner();
+    let (user_id, generation_name, send_id) = path.into_inner();
 
     let (added_ids, added_cells): (Vec<_>, Vec<_>) = data
         .added

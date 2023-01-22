@@ -8,26 +8,29 @@ pub mod generation;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     // @TODO: Make module hierarchy fully match request hierarchy
-    cfg.service(web::scope("Generations").route("", web::get().to(generation::get::execute)))
-        .service(
-            web::scope("Generation")
-                .route("", web::put().to(generation::create::execute))
-                .route("{name}", web::delete().to(generation::remove::execute))
-                .route("{name}/Time", web::get().to(generation::get_time::execute))
-                .route(
-                    "{name}",
-                    web::patch().to(generation::change_name_description::execute),
-                )
-                .route(
-                    "{name}/Cells/{sendId}",
-                    web::get().to(generation::cells::get::execute),
-                )
-                .route(
-                    "{name}/Cells/{sendId}",
-                    web::patch().to(generation::cells::patch::execute),
-                ),
-        )
-        .service(web::scope("Alive").route("", web::get().to(alive::execute)));
+    cfg.service(
+        web::scope("User/{user_id}")
+            .route("Generations", web::get().to(generation::get::execute))
+            .service(
+                web::scope("Generation")
+                    .route("", web::post().to(generation::create::execute))
+                    .route("{name}", web::delete().to(generation::remove::execute))
+                    .route("{name}/Time", web::get().to(generation::get_time::execute))
+                    .route(
+                        "{name}",
+                        web::patch().to(generation::change_name_description::execute),
+                    )
+                    .route(
+                        "{name}/Cells/{send_id}",
+                        web::get().to(generation::cells::get::execute),
+                    )
+                    .route(
+                        "{name}/Cells/{send_id}",
+                        web::patch().to(generation::cells::patch::execute),
+                    ),
+            ),
+    )
+    .service(web::scope("Alive").route("", web::get().to(alive::execute)));
 }
 
 #[derive(Serialize, Deserialize)]

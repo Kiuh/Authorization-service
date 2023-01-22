@@ -7,11 +7,6 @@ use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
-pub struct QueryData {
-    pub user_id: i32,
-}
-
-#[derive(Serialize, Deserialize)]
 struct Response {
     pub cells: Vec<JsonCell>,
 }
@@ -19,11 +14,9 @@ into_success_response!(Response);
 
 pub async fn execute(
     st: web::Data<ServerState>,
-    path: web::Path<(String, i32)>, // generation_name / sendId
-    user_id: web::Query<QueryData>,
+    path: web::Path<(i32, String, i32)>, // user_id, name, send_id
 ) -> actix_web::Result<HttpResponse> {
-    let user_id = user_id.into_inner().user_id;
-    let (generation_name, send_id) = path.into_inner();
+    let (user_id, generation_name, send_id) = path.into_inner();
 
     let alive: Vec<JsonCell> =
         Cell::fetch_alive(&generation_name, user_id, send_id, &st.db_connection.pool)

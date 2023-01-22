@@ -5,7 +5,7 @@ public:
   ssh-keygen -y -e -m pem
 
 cargo run --release -- --app-endpoint localhost:8080 --database-url postgresql://postgres:postgres@localhost:5432/lifesimdb
-cargo run --release -- --app-endpoint localhost:8080 --database-url postgresql://postgres:postgres@localhost:5432/authdb --verification-email mail --verification-email-password pass
+
 
 ############## Log in ############
 curl -X POST -v -H "Content-Type: application/json" -d '
@@ -31,6 +31,10 @@ curl -X PATCH -v -H "Content-Type: application/json" -d '
 
 ######## Get Generations data ####
 curl -X GET localhost:27503/Generations?login=TestUser
+
+curl -X POST localhost:8081/Generations?login=TestUser
+
+curl -v -X POST localhost:8081/User/TEST/Generation
 ##################################
 
 ######## Delete generation #######
@@ -54,3 +58,5 @@ curl -X PUT -H "Content-Type: application/json" -d \
 ######## Get creation variants ###
 curl -X GET localhost:27503/CreationVariants
 ##################################
+
+curl -v -X GET localhost:8081/User/TESTLOGIN/Generations

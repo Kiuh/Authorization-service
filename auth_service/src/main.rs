@@ -21,6 +21,8 @@ pub struct Cli {
     pub verification_email: String,
     #[clap(long, env = "VERIFICATION_EMAIL_PASSWORD")]
     pub verification_email_password: String,
+    #[clap(long, env = "CORE_SERVICE_URI")]
+    pub core_service_uri: String,
 }
 
 #[actix_web::main]
@@ -31,6 +33,7 @@ async fn main() {
             cli.database_url,
             cli.verification_email,
             cli.verification_email_password,
+            cli.core_service_uri,
         )
         .await
         .unwrap(),
