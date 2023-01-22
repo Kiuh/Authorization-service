@@ -1,5 +1,5 @@
 use crate::{
-    database::user::User,
+    database::{password_recovery, user::User},
     error::{ResponseError, ServerError},
     rest_api::{decode_rsa_parameter, into_success_response},
     server_state::ServerState,
@@ -19,7 +19,6 @@ pub struct Request {
 pub struct Response {}
 into_success_response!(Response);
 
-// @TODO: execute requests inside tx to rollback on mail send failure.
 pub async fn execute(
     st: web::Data<ServerState>,
     login: web::Path<String>,
@@ -31,10 +30,10 @@ pub async fn execute(
     let user = User::get(&login, &st.db_connection.pool)
         .await
         .map_err(|e| e.http_status_500())?
-        .ok_or_else(|| ServerError::UserNotFound(login).http_status_400())?;
+        .ok_or_else(|| ServerError::UserNotFound(login.clone()).http_status_400())?;
 
     let mut stored_nonce_email = Sha256::new();
-    stored_nonce_email.update(data.nonce.to_string() + &user.email);
+    stored_nonce_email.update(data.nonce.to_string() + &user.data.email);
     let stored_nonce_email = &stored_nonce_email.finalize()[..];
     let stored_nonce_email = bs58::encode(stored_nonce_email).into_string();
 
@@ -42,10 +41,10 @@ pub async fn execute(
         return Err(ServerError::WrongNonce.http_status_400().into());
     }
 
-    let nonce_valid = user
-        .update_recover_password_nonce(data.nonce, &st.db_connection.pool)
-        .await
-        .map_err(|e| e.http_status_500())?;
+    let nonce_valid =
+        password_recovery::try_update_nonce(user.id, data.nonce, &st.db_connection.pool)
+            .await
+            .map_err(|e| e.http_status_500())?;
 
     if !nonce_valid {
         return Err(ServerError::WrongNonce.http_status_400().into());
@@ -54,17 +53,14 @@ pub async fn execute(
     // @TODO: Generate randomly.
     let access_code = "ACCESS_CODE";
 
-    user.request_new_password(&new_password, &access_code, &st.db_connection.pool)
+    password_recovery::add(user.id, &new_password, &access_code, &st.db_connection.pool)
         .await
         .map_err(|e| e.http_status_500())?;
 
-    let request = format!(
-        "PATCH User/{}/Password?access_code={}",
-        user.login, access_code
-    );
+    let recovery_request = format!("PATCH User/{}/Password?access_code={}", login, access_code);
 
     st.mailer
-        .send_email(&user.email, &request)
+        .send_email(&user.data.email, &recovery_request)
         .await
         .map_err(|e| e.http_status_500())?;
 

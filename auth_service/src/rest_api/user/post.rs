@@ -1,5 +1,5 @@
 use crate::{
-    database::user::User,
+    database::user::UserData,
     error::{ResponseError, ServerError},
     rest_api::{decode_rsa_parameter, into_success_response},
     server_state::ServerState,
@@ -25,7 +25,7 @@ pub async fn execute(
     let email = decode_rsa_parameter(&data.email, "email".to_string(), &st)?;
     let password = decode_rsa_parameter(&data.password, "password".to_string(), &st)?;
 
-    let user = User {
+    let user = UserData {
         login: data.login.clone(),
         email,
         password,

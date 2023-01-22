@@ -1,3 +1,4 @@
+pub mod password_recovery;
 pub mod private_key;
 pub mod user;
 

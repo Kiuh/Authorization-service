@@ -2,6 +2,7 @@ use actix_web::{web, App, HttpServer};
 use clap::Parser;
 use std::sync::Arc;
 
+pub mod core_service;
 pub mod database;
 pub mod error;
 pub mod mail;

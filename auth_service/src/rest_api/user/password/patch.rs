@@ -1,5 +1,5 @@
 use crate::{
-    database::user::User,
+    database::{password_recovery, user::User},
     error::{ResponseError, ServerError},
     rest_api::into_success_response,
     server_state::ServerState,
@@ -23,7 +23,12 @@ pub async fn execute(
 ) -> actix_web::Result<HttpResponse> {
     let login = login.into_inner();
 
-    let stored_access_code = User::get_recover_password_access_code(&login, &st.db_connection.pool)
+    let user_id = User::get_id(&login, &st.db_connection.pool)
+        .await
+        .map_err(|e| e.http_status_500())?
+        .ok_or_else(|| ServerError::UserNotFound(login.clone()).http_status_400())?;
+
+    let stored_access_code = password_recovery::get_access_code(user_id, &st.db_connection.pool)
         .await
         .map_err(|e| e.http_status_500())?;
 
@@ -32,9 +37,20 @@ pub async fn execute(
         return Err(ServerError::WrongAccessCode.http_status_400().into());
     }
 
-    User::set_new_password(&login, &st.db_connection.pool)
+    let mut tx = st
+        .db_connection
+        .pool
+        .begin()
+        .await
+        .map_err(|e| ServerError::Database(e).http_status_500())?;
+
+    password_recovery::apply(user_id, &mut tx)
         .await
         .map_err(|e| e.http_status_500())?;
+
+    tx.commit()
+        .await
+        .map_err(|e| ServerError::Database(e).http_status_500())?;
 
     Response {}.into()
 }

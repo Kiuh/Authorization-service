@@ -14,18 +14,15 @@ pub mod user;
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("User")
-            .route("", web::post().to(user::register::execute))
+            .route("", web::post().to(user::post::execute))
             .service(
                 web::scope("{login}")
-                    .route(
-                        "Password",
-                        web::post().to(user::request_recover_password::execute),
-                    )
-                    .route("Password", web::patch().to(user::recover_password::execute)),
+                    .route("Password", web::post().to(user::password::post::execute))
+                    .route("Password", web::patch().to(user::password::patch::execute)),
             ),
     )
     .service(web::scope("Pubkey").route("", web::get().to(pubkey::get::execute)))
-    .service(web::scope("Alive").route("", web::get().to(alive::execute)))
+    .service(web::scope("Alive").route("", web::get().to(alive::get::execute)))
     .default_service(web::to(authorized::execute));
 }
 
