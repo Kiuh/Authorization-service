@@ -7,31 +7,7 @@ paths:
     post:
       tags:
         - User
-      description: Войти в аккаунт
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                login:
-                  type: string
-                password:
-                  type: string
-              example:
-                login: User
-                password: Password
-          
-      responses:
-        '200':
-          description: Sucsess
-        '500':
-          description: Error
-    put:
-      tags:
-        - User
-      description: Регестрация
+      description: Регистрация
       requestBody:
         required: true
         content:
@@ -45,14 +21,123 @@ paths:
                   type: string
                 password:
                   type: string
-              example:
-                login: User
-                email: someone@gmail.com
-                password: Password
-     
+            example:
+              login: User1
+              email: RSA-OAEP(email), base58, OAEP SHA-256 padding
+              password: RSA-OAEP(SHA-256(password), base58), base58, OAEP SHA-256 padding
       responses:
         '200':
-          description: successfully registered
+          description: Success
+        '500':
+          description: Error
+  
+  /User/Password:
+    post:
+      tags:
+        - User
+      description: Запросить смену пароля
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nonce_email:
+                  type: string
+                nonce:
+                  type: number
+            example:
+              nonce_email: SHA-256(nonce + email), base58
+              nonce: 132132132132
+      responses:
+        '200':
+          description: Success
+        '500':
+          description: Error
+    patch:
+      tags:
+        - User
+      description: Смена пароля
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                access_code:
+                  type: string
+                new_password:
+                  type: string
+                nonce_email:
+                  type: string
+                nonce:
+                  type: number
+            example:
+              access_code: code
+              new_password: RSA-OAEP(SHA-256(password), base58), base58, OAEP SHA-256 padding
+              nonce_email: SHA-256(nonce + email), base58
+              nonce: 132132132132
+      responses:
+        '200':
+          description: Success
+        '500':
+          description: Error
+
+  /Pubkey:
+   get:
+      tags:
+          - User
+      description: Получить публичный ключ
+      
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pubkey:
+                    type: string
+                    example: RSA-OAEP 2048bit, PEM, pkcs1
+  
+  /User/{login}:
+    post:
+      tags:
+        - User
+      description: Вход в систему
+      parameters:
+      - in: path
+        name: login
+        schema:
+          type: string
+        required: true
+        example: Dave
+      - in: header
+        name: Signature
+        schema:
+          type: string
+          format: base58
+          example: SHA-256(login + nonce + SHA-256(password), base58), base58
+        required: true
+      - in: header
+        name: Nonce
+        schema:
+          type: number
+          format: Int64
+        required: true
+      
+      responses:
+        '200':
+          description: Success
+        '500':
+          description: Error
+
+  
+
 
   /Generations:
     get:
