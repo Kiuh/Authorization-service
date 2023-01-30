@@ -6,12 +6,10 @@ use crate::{
 };
 use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 
 #[derive(Serialize, Deserialize)]
 pub struct Request {
-    pub new_password: String, // RSA-OAEP(SHA-256(password), base58), base58, OAEP SHA-256 padding
-    pub nonce_email: String,  // SHA-256(nonce + email), base58
+    pub nonce_email: String, // RSA-OAEP(nonce + email, base58), base58, OAEP SHA-256 padding
     pub nonce: i64,
 }
 
@@ -21,28 +19,28 @@ into_success_response!(Response);
 
 pub async fn execute(
     st: web::Data<ServerState>,
-    login: web::Path<String>,
     data: web::Json<Request>,
 ) -> actix_web::Result<HttpResponse> {
-    let new_password = decode_rsa_parameter(&data.new_password, "new_password".to_string(), &st)?;
-    let login = login.into_inner();
+    let nonce_email = decode_rsa_parameter(&data.nonce_email, "nonce_email".to_string(), &st)?;
+    let nonce_str = data.nonce.to_string();
 
-    let user = User::get(&login, &st.db_connection.pool)
-        .await
-        .map_err(|e| e.http_status_500())?
-        .ok_or_else(|| ServerError::UserNotFound(login.clone()).http_status_400())?;
-
-    let mut stored_nonce_email = Sha256::new();
-    stored_nonce_email.update(data.nonce.to_string() + &user.data.email);
-    let stored_nonce_email = &stored_nonce_email.finalize()[..];
-    let stored_nonce_email = bs58::encode(stored_nonce_email).into_string();
-
-    if stored_nonce_email != data.nonce_email {
+    if nonce_str.len() >= nonce_email.len() {
         return Err(ServerError::WrongNonce.http_status_400().into());
     }
 
+    let (fetched_nonce, fetched_email) = nonce_email.split_at(nonce_str.len());
+
+    if fetched_nonce != nonce_str {
+        return Err(ServerError::WrongNonce.http_status_400().into());
+    }
+
+    let user_id = User::get_id(&fetched_email, &st.db_connection.pool)
+        .await
+        .map_err(|e| e.http_status_500())?
+        .ok_or_else(|| ServerError::UserNotFound(fetched_email.to_string()).http_status_404())?;
+
     let nonce_valid =
-        password_recovery::try_update_nonce(user.id, data.nonce, &st.db_connection.pool)
+        password_recovery::try_update_nonce(user_id, data.nonce, &st.db_connection.pool)
             .await
             .map_err(|e| e.http_status_500())?;
 
@@ -53,14 +51,12 @@ pub async fn execute(
     // @TODO: Generate randomly.
     let access_code = "ACCESS_CODE";
 
-    password_recovery::add(user.id, &new_password, &access_code, &st.db_connection.pool)
+    password_recovery::add(user_id, &access_code, &st.db_connection.pool)
         .await
         .map_err(|e| e.http_status_500())?;
 
-    let recovery_request = format!("PATCH User/{}/Password?access_code={}", login, access_code);
-
     st.mailer
-        .send_email(&user.data.email, &recovery_request)
+        .send_email(&fetched_email, &access_code)
         .await
         .map_err(|e| e.http_status_500())?;
 

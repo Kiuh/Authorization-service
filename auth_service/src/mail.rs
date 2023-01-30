@@ -23,9 +23,9 @@ impl Mail {
         })
     }
 
-    pub async fn send_email(&self, receiver: &str, request: &str) -> crate::error::Result {
+    pub async fn send_email(&self, receiver: &str, access_code: &str) -> crate::error::Result {
         let subject = "Password recovery";
-        let body = format!("Recovery request: {}", request);
+        let body = format!("Password recovery access code: {}", access_code);
 
         let email = Message::builder()
             .from(

@@ -23,28 +23,21 @@ where
         == 1)
 }
 
-pub async fn add<'a, E>(
-    user_id: i32,
-    new_password: &str,
-    access_code: &str,
-    executor: E,
-) -> crate::error::Result<()>
+pub async fn add<'a, E>(user_id: i32, access_code: &str, executor: E) -> crate::error::Result<()>
 where
     E: Executor<'a, Database = Postgres>,
 {
     sqlx::query!(
         r#"
             INSERT INTO password_recovery_requests 
-                (user_id, new_password, access_code) 
+                (user_id, access_code) 
             VALUES
-                ($1, $2, $3)
+                ($1, $2)
             ON CONFLICT(user_id) DO UPDATE
                 SET 
-                    new_password = EXCLUDED.new_password, 
                     access_code = EXCLUDED.access_code;
         "#,
         user_id,
-        new_password,
         access_code
     )
     .execute(executor)
@@ -71,18 +64,16 @@ where
     .access_code)
 }
 
-pub async fn apply(user_id: i32, tx: &mut Transaction<'_, Postgres>) -> crate::error::Result {
+pub async fn apply(
+    user_id: i32,
+    new_password: &str,
+    tx: &mut Transaction<'_, Postgres>,
+) -> crate::error::Result {
     tx.execute(sqlx::query!(
         r#"
-            UPDATE users 
-            SET 
-                password = (
-                    SELECT new_password 
-                    FROM password_recovery_requests 
-                    WHERE user_id = $1
-                )
-            WHERE id = $1;
+            UPDATE users SET password = $1 WHERE id = $2;
         "#,
+        new_password,
         user_id
     ))
     .await?;

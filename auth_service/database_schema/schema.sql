@@ -7,7 +7,6 @@ DROP TABLE IF EXISTS password_recovery_requests;
 CREATE TABLE password_recovery_requests (
     user_id INTEGER,
 
-    new_password VARCHAR,
     access_code VARCHAR,
 
     UNIQUE (user_id)

@@ -30,12 +30,12 @@ impl UserData {
 }
 
 impl User {
-    pub async fn get_id<'a, E>(login: &str, executor: E) -> crate::error::Result<Option<i32>>
+    pub async fn get_id<'a, E>(email: &str, executor: E) -> crate::error::Result<Option<i32>>
     where
         E: Executor<'a, Database = Postgres>,
     {
         Ok(
-            sqlx::query!(r#"SELECT id FROM users WHERE login = $1"#, login)
+            sqlx::query!(r#"SELECT id FROM users WHERE email = $1"#, email)
                 .fetch_optional(executor)
                 .await?
                 .map(|res| res.id),
@@ -57,6 +57,26 @@ impl User {
             data: UserData {
                 login: login.to_string(),
                 email: res.email,
+                password: res.password,
+            },
+        }))
+    }
+
+    pub async fn get_by_email<'a, E>(email: &str, executor: E) -> crate::error::Result<Option<User>>
+    where
+        E: Executor<'a, Database = Postgres>,
+    {
+        Ok(sqlx::query!(
+            r#"SELECT id, login, password FROM users WHERE email = $1"#,
+            email
+        )
+        .fetch_optional(executor)
+        .await?
+        .map(|res| User {
+            id: res.id,
+            data: UserData {
+                login: res.login,
+                email: email.to_string(),
                 password: res.password,
             },
         }))

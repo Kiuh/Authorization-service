@@ -87,7 +87,7 @@ pub enum ServerError {
     #[error("Failed to register")]
     RegisterFailed,
 
-    #[error("Couldn't find user with name {0}")]
+    #[error("Couldn't find user with login/email {0}")]
     UserNotFound(String),
 
     #[error("Failed to initialize mail client: {0}")]

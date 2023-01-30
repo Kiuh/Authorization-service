@@ -7,7 +7,8 @@ use rsa::Oaep;
 use serde::{Deserialize, Serialize};
 
 pub mod alive;
-pub mod authorized;
+pub mod authorize;
+pub mod proxy;
 pub mod pubkey;
 pub mod user;
 
@@ -15,15 +16,16 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("User")
             .route("", web::post().to(user::post::execute))
+            .route("{login}", web::post().to(user::login::execute))
             .service(
-                web::scope("{login}")
-                    .route("Password", web::post().to(user::password::post::execute))
-                    .route("Password", web::patch().to(user::password::patch::execute)),
+                web::scope("Password")
+                    .route("", web::post().to(user::password::post::execute))
+                    .route("", web::patch().to(user::password::patch::execute)),
             ),
     )
     .service(web::scope("Pubkey").route("", web::get().to(pubkey::get::execute)))
     .service(web::scope("Alive").route("", web::get().to(alive::get::execute)))
-    .default_service(web::to(authorized::execute));
+    .default_service(web::to(proxy::execute));
 }
 
 #[derive(Serialize, Deserialize)]

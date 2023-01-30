@@ -1,16 +1,15 @@
-use actix_web::{web, HttpRequest, HttpResponse};
-use itertools::Itertools;
+use actix_web::HttpRequest;
 use sha2::{Digest, Sha256};
+use sqlx::PgPool;
 
 use crate::{
     database::user::User,
     error::{ResponseError, ServerError},
-    server_state::ServerState,
 };
 
 #[derive(Default)]
 struct Headers {
-    pub signature: String,
+    pub signature: String, // SHA-256(login + nonce + SHA-256(password), base58), base58
     pub nonce: i64,
 }
 
@@ -39,22 +38,12 @@ impl Headers {
     }
 }
 
-// Headers:
-// Signature: SHA-256(login + nonce + SHA-256(password), base58), base58
-// Nonce: i64
-pub async fn execute(
-    st: web::Data<ServerState>,
-    request: HttpRequest,
-    request_body: actix_web::web::Bytes,
-) -> actix_web::Result<HttpResponse> {
-    let mut path_iter = request.path().split('/');
-    let (_, user_literal, login) = (path_iter.next(), path_iter.next(), path_iter.next());
-    if Some("User") != user_literal || login.is_none() {
-        return Err(ServerError::WrongRequest.http_status_404().into());
-    }
-    let login = login.unwrap();
-
-    let user = User::get(&login, &st.db_connection.pool)
+pub async fn authorize(
+    login: &str,
+    request: &HttpRequest,
+    pool: &PgPool,
+) -> actix_web::Result<User> {
+    let user = User::get(login, pool)
         .await
         .map_err(|e| e.http_status_500())?
         .ok_or_else(|| ServerError::UserNotFound(login.to_string()).http_status_400())?;
@@ -71,7 +60,7 @@ pub async fn execute(
     }
 
     let nonce_valid = user
-        .update_auth_nonce(headers.nonce, &st.db_connection.pool)
+        .update_auth_nonce(headers.nonce, pool)
         .await
         .map_err(|e| e.http_status_500())?;
 
@@ -79,15 +68,5 @@ pub async fn execute(
         return Err(ServerError::WrongNonce.http_status_400().into());
     }
 
-    let redirect_to: String = Itertools::intersperse(
-        vec!["User", &user.id.to_string()]
-            .into_iter()
-            .chain(path_iter),
-        "/",
-    )
-    .collect();
-    let redirect_to = format!("{}{}", redirect_to, request.query_string());
-    st.core_service
-        .send_request(request.method(), request_body, &redirect_to)
-        .await
+    Ok(user)
 }
