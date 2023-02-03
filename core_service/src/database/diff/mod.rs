@@ -9,5 +9,3 @@ pub enum DiffType {
     ChangeModuleValue,
     RemoveCell,
 }
-
-// @TODO: Code duplicated in child modules.

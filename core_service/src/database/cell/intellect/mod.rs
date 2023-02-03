@@ -1,15 +1,13 @@
 use itertools::{izip, MultiUnzip};
 use sqlx::{Executor, Postgres};
 
+use crate::error::ServerError;
+
 pub mod gen;
 pub mod neuron;
 
-use gen::Gen;
-use neuron::Neuron;
-
-use crate::error::ServerError;
-
-use self::{gen::GenWithIntellectId, neuron::NeuronWithIntellectId};
+use gen::{Gen, GenWithIntellectId};
+use neuron::{Neuron, NeuronWithIntellectId};
 
 pub(super) struct IntellectWithCellId {
     pub intellect: Intellect,

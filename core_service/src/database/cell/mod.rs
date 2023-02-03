@@ -5,10 +5,8 @@ use sqlx::{Executor, Postgres};
 pub mod intellect;
 pub mod module;
 
-use intellect::Intellect;
+use intellect::{Intellect, IntellectWithCellId};
 use module::{Module, ModuleWithCellId};
-
-use self::intellect::IntellectWithCellId;
 
 pub struct Cell {
     pub parent_id: i64,
@@ -26,29 +24,13 @@ struct PrefetchedCell {
 impl Cell {
     pub async fn insert_many<'a, E>(
         cells: Vec<Cell>,
-        generation_name: &str,
-        user_id: i32,
+        generation_id: i32,
         executor: E,
     ) -> crate::error::Result
     where
         E: Executor<'a, Database = Postgres> + Clone,
     {
         let cells_count = cells.len();
-
-        let generation_id = sqlx::query!(
-            r#"
-                SELECT id 
-                FROM generations 
-                WHERE name = $1 AND owner_id = $2
-            "#,
-            generation_name,
-            user_id
-        )
-        .fetch_one(executor.clone())
-        .await
-        .map_err(|e| ServerError::Database(e))?
-        .id;
-
         // Modules and intellects contain cell_id NOT from database for now.
         let (parent_ids, local_ids, modules, intellects): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) = cells
             .into_iter()

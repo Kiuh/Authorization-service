@@ -1,6 +1,7 @@
-use crate::database::generation::Generation;
-use crate::error::ResponseError;
-use crate::{rest_api::into_success_response, server_state::ServerState};
+use crate::{
+    database::generation::Generation, error::ResponseError, rest_api::into_success_response,
+    server_state::ServerState,
+};
 use actix_web::{web, HttpResponse};
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};

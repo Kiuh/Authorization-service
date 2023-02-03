@@ -2,31 +2,26 @@ use actix_web::web;
 use serde::{Deserialize, Serialize};
 
 pub mod alive;
-pub mod common_types;
-pub mod creation_variants;
 pub mod generation;
+pub mod generations;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
-    // @TODO: Make module hierarchy fully match request hierarchy
     cfg.service(
         web::scope("User/{user_id}")
-            .route("Generations", web::get().to(generation::get::execute))
             .service(
-                web::scope("Generation")
-                    .route("", web::post().to(generation::create::execute))
-                    .route("{name}", web::delete().to(generation::remove::execute))
-                    .route("{name}/Time", web::get().to(generation::get_time::execute))
-                    .route(
-                        "{name}",
-                        web::patch().to(generation::change_name_description::execute),
-                    )
-                    .route(
-                        "{name}/Cells/{send_id}",
-                        web::get().to(generation::cells::get::execute),
-                    )
-                    .route(
-                        "{name}/Cells/{send_id}",
-                        web::patch().to(generation::cells::patch::execute),
+                web::scope("Generations")
+                    .route("", web::get().to(generations::get::execute))
+                    .route("", web::post().to(generations::post::execute)),
+            )
+            .service(
+                web::scope("Generation/{name}")
+                    .route("", web::delete().to(generation::delete::execute))
+                    .route("", web::patch().to(generation::patch::execute))
+                    .route("Time", web::get().to(generation::time::get::execute))
+                    .service(
+                        web::scope("Ticks/{tick}/Cells")
+                            .route("", web::get().to(generation::ticks::get::execute))
+                            .route("", web::post().to(generation::ticks::post::execute)),
                     ),
             ),
     )

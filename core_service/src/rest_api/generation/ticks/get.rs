@@ -1,7 +1,6 @@
-use super::super::super::common_types::Cell as JsonCell;
+use super::{Cell as JsonCell, Gen, Intellect, Module, Neuron};
 use crate::database::cell::Cell;
 use crate::error::ResponseError;
-use crate::rest_api::common_types::{Gen, Intellect, Module, Neuron};
 use crate::{rest_api::into_success_response, server_state::ServerState};
 use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
@@ -14,12 +13,12 @@ into_success_response!(Response);
 
 pub async fn execute(
     st: web::Data<ServerState>,
-    path: web::Path<(i32, String, i32)>, // user_id, name, send_id
+    path: web::Path<(i32, String, i32)>, // user_id, name, tick
 ) -> actix_web::Result<HttpResponse> {
-    let (user_id, generation_name, send_id) = path.into_inner();
+    let (user_id, generation_name, tick) = path.into_inner();
 
     let alive: Vec<JsonCell> =
-        Cell::fetch_alive(&generation_name, user_id, send_id, &st.db_connection.pool)
+        Cell::fetch_alive(&generation_name, user_id, tick, &st.db_connection.pool)
             .await
             .map_err(|e| e.http_status_500())?
             .into_iter()

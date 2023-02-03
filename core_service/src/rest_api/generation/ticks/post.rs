@@ -1,15 +1,18 @@
-use super::super::super::common_types::{Cell as JsonCell, Diff};
-use crate::database::cell::intellect::gen::Gen;
-use crate::database::cell::intellect::neuron::Neuron;
-use crate::database::cell::intellect::Intellect;
-use crate::database::cell::module::Module;
-use crate::database::cell::Cell;
-use crate::database::diff::created::Created;
-use crate::database::diff::module_changed::ModuleChanged;
-use crate::database::diff::removed::Removed;
-use crate::database::generation::Generation;
-use crate::error::ResponseError;
-use crate::{rest_api::into_success_response, server_state::ServerState};
+use super::{Cell as JsonCell, Diff};
+use crate::{
+    database::{
+        cell::{
+            intellect::{gen::Gen, neuron::Neuron, Intellect},
+            module::Module,
+            Cell,
+        },
+        diff::{created::Created, module_changed::ModuleChanged, removed::Removed},
+        generation::Generation,
+    },
+    error::ResponseError,
+    rest_api::into_success_response,
+    server_state::ServerState,
+};
 use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
 
@@ -26,11 +29,11 @@ into_success_response!(Response);
 
 pub async fn execute(
     st: web::Data<ServerState>,
-    path: web::Path<(i32, String, i32)>, // user_id, name, send_id
+    path: web::Path<(i32, String, i32)>, // user_id, name, tick
     data: web::Json<Request>,
 ) -> actix_web::Result<HttpResponse> {
     let data = data.into_inner();
-    let (user_id, generation_name, send_id) = path.into_inner();
+    let (user_id, generation_name, tick) = path.into_inner();
 
     let (added_ids, added_cells): (Vec<_>, Vec<_>) = data
         .added
@@ -74,14 +77,13 @@ pub async fn execute(
         })
         .unzip();
 
-    Cell::insert_many(
-        added_cells,
-        &generation_name,
-        user_id,
-        &st.db_connection.pool,
-    )
-    .await
-    .map_err(|e| e.http_status_500())?;
+    let generation_id = Generation::get_id(user_id, &generation_name, &st.db_connection.pool)
+        .await
+        .map_err(|e| e.http_status_500())?;
+
+    Cell::insert_many(added_cells, generation_id, &st.db_connection.pool)
+        .await
+        .map_err(|e| e.http_status_500())?;
 
     let max_added_id = added_ids.iter().max().cloned().unwrap_or(-1);
 
@@ -92,9 +94,8 @@ pub async fn execute(
                 local_id: local_id as i32,
             })
             .collect(),
-        user_id,
-        &generation_name,
-        send_id,
+        generation_id,
+        tick,
         &st.db_connection.pool,
     )
     .await
@@ -109,9 +110,8 @@ pub async fn execute(
                 new_value: change.value,
             })
             .collect(),
-        user_id,
-        &generation_name,
-        send_id,
+        generation_id,
+        tick,
         &st.db_connection.pool,
     )
     .await
@@ -126,16 +126,15 @@ pub async fn execute(
             .collect(),
         user_id,
         &generation_name,
-        send_id,
+        tick,
         &st.db_connection.pool,
     )
     .await
     .map_err(|e| e.http_status_500())?;
 
     Generation::update_last_send(
-        &generation_name,
-        user_id,
-        send_id as i64,
+        generation_id,
+        tick as i64,
         max_added_id,
         &st.db_connection.pool,
     )

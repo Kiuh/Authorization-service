@@ -1,6 +1,9 @@
-use crate::database::generation::GenerationNameDescription;
-use crate::error::{ResponseError, ServerError};
-use crate::{rest_api::into_success_response, server_state::ServerState};
+use crate::{
+    database::generation::GenerationNameDescription,
+    error::{ResponseError, ServerError},
+    rest_api::into_success_response,
+    server_state::ServerState,
+};
 use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
 

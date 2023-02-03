@@ -24,6 +24,29 @@ pub struct Generation {
 }
 
 impl Generation {
+    pub async fn get_id<'a, E>(
+        user_id: i32,
+        generation_name: &str,
+        executor: E,
+    ) -> crate::error::Result<i32>
+    where
+        E: Executor<'a, Database = Postgres>,
+    {
+        Ok(sqlx::query!(
+            r#"
+                SELECT id 
+                FROM generations 
+                WHERE name = $1 AND owner_id = $2
+            "#,
+            generation_name,
+            user_id
+        )
+        .fetch_one(executor)
+        .await
+        .map_err(|e| ServerError::Database(e))?
+        .id)
+    }
+
     pub async fn fetch_all<'a, E>(user_id: i32, executor: E) -> crate::error::Result<Vec<Self>>
     where
         E: Executor<'a, Database = Postgres>,
@@ -143,8 +166,7 @@ impl Generation {
     }
 
     pub async fn update_last_send<'a, E>(
-        name: &str,
-        user_id: i32,
+        generation_id: i32,
         send_num: i64,
         cell_num: i64,
         executor: E,
@@ -160,12 +182,11 @@ impl Generation {
                     last_send_num = GREATEST($1, last_send_num), 
                     last_cell_num = GREATEST($2, last_cell_num)
                 WHERE 
-                    name = $3 AND owner_id = $4
+                    id = $3
             "#,
             send_num,
             cell_num,
-            name,
-            user_id,
+            generation_id
         )
         .execute(executor)
         .await
