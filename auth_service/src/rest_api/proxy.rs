@@ -2,7 +2,7 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use itertools::Itertools;
 
 use crate::{
-    error::{ResponseError, ServerError},
+    error::{IntoHttpResult, ServerError},
     server_state::ServerState,
 };
 
@@ -16,7 +16,7 @@ pub async fn execute(
     let mut path_iter = request.path().split('/');
     let (_, user_literal, login) = (path_iter.next(), path_iter.next(), path_iter.next());
     if Some("User") != user_literal || login.is_none() {
-        return Err(ServerError::WrongRequest.http_status_404().into());
+        return Err(ServerError::WrongRequest).into_http_404();
     }
     let login = login.unwrap();
 

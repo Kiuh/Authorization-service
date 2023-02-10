@@ -7,6 +7,57 @@ use actix_web::{
 use serde_json::json;
 use std::fmt;
 
+#[derive(Error, Debug)]
+pub enum ServerError {
+    #[error("Failed connect to database: {0}")]
+    DatabaseConnection(String),
+
+    #[error("Database error: {0}")]
+    Database(#[from] sqlx::Error),
+
+    #[error("Failed to log in")]
+    LogInFailed,
+
+    #[error("Failed to register")]
+    RegisterFailed,
+
+    #[error("Couldn't find user with login/email {0}")]
+    UserNotFound(String),
+
+    #[error("Failed to initialize mail client: {0}")]
+    MailInit(String),
+
+    #[error("Failed to send e-mail: {0}")]
+    MailSend(String),
+
+    #[error("Wrong nonce")]
+    WrongNonce,
+
+    #[error("Failed to decode {parameter_name} from base58")]
+    Base58Decode { parameter_name: String },
+
+    #[error("Failed to decode {parameter_name} from rsa")]
+    RsaDecode { parameter_name: String },
+
+    #[error("Wrong encoding for {parameter_name}: expected UTF-8")]
+    WrongTextEncoding { parameter_name: String },
+
+    #[error("Wrong access code")]
+    WrongAccessCode,
+
+    #[error("Wrong request")]
+    WrongRequest,
+
+    #[error("Unsupported HTTP method")]
+    UnsupportedHttpMethod,
+
+    #[error("Failed to send request to core service")]
+    SendRequestToCoreService,
+
+    #[error("Wrong signature")]
+    WrongSignature,
+}
+
 pub trait ResponseError: fmt::Display {
     fn code(&self) -> u32;
 
@@ -73,55 +124,38 @@ impl fmt::Display for ResponseErrorData {
 
 pub type Result<T = ()> = std::result::Result<T, ServerError>;
 
-#[derive(Error, Debug)]
-pub enum ServerError {
-    #[error("Failed connect to database: {0}")]
-    DatabaseConnection(String),
+pub trait IntoHttpResult<T> {
+    fn into_http_400(self) -> actix_web::Result<T>;
+    fn into_http_404(self) -> actix_web::Result<T>;
+    fn into_http_500(self) -> actix_web::Result<T>;
+}
 
-    #[error("Database error: {0}")]
-    Database(#[from] sqlx::Error),
+impl<T> IntoHttpResult<T> for Result<T> {
+    fn into_http_400(self) -> actix_web::Result<T> {
+        self.map_err(|e| e.http_status_400().into())
+    }
 
-    #[error("Failed to log in")]
-    LogInFailed,
+    fn into_http_404(self) -> actix_web::Result<T> {
+        self.map_err(|e| e.http_status_404().into())
+    }
 
-    #[error("Failed to register")]
-    RegisterFailed,
+    fn into_http_500(self) -> actix_web::Result<T> {
+        self.map_err(|e| e.http_status_500().into())
+    }
+}
 
-    #[error("Couldn't find user with login/email {0}")]
-    UserNotFound(String),
+impl<T> IntoHttpResult<T> for ServerError {
+    fn into_http_400(self) -> actix_web::Result<T> {
+        Err(self).into_http_400()
+    }
 
-    #[error("Failed to initialize mail client: {0}")]
-    MailInit(String),
+    fn into_http_404(self) -> actix_web::Result<T> {
+        Err(self).into_http_404()
+    }
 
-    #[error("Failed to send e-mail: {0}")]
-    MailSend(String),
-
-    #[error("Wrong nonce")]
-    WrongNonce,
-
-    #[error("Failed to decode {parameter_name} from base58")]
-    Base58Decode { parameter_name: String },
-
-    #[error("Failed to decode {parameter_name} from rsa")]
-    RsaDecode { parameter_name: String },
-
-    #[error("Wrong encoding for {parameter_name}: expected UTF-8")]
-    WrongTextEncoding { parameter_name: String },
-
-    #[error("Wrong access code")]
-    WrongAccessCode,
-
-    #[error("Wrong request")]
-    WrongRequest,
-
-    #[error("Unsupported HTTP method")]
-    UnsupportedHttpMethod,
-
-    #[error("Failed to send request to core service")]
-    SendRequestToCoreService,
-
-    #[error("Wrong signature")]
-    WrongSignature,
+    fn into_http_500(self) -> actix_web::Result<T> {
+        Err(self).into_http_500()
+    }
 }
 
 impl ResponseError for ServerError {

@@ -1,4 +1,4 @@
-use crate::error::{ResponseError, ServerError};
+use crate::error::{IntoHttpResult, ServerError};
 
 use actix_web::http::Method;
 use actix_web::{HttpResponse, HttpResponseBuilder};
@@ -22,24 +22,26 @@ impl CoreService {
         let client = Client::default();
         let uri = format!("http://{}/{}", self.uri, path);
 
-        let mut response = match method {
-            &Method::GET => client.get(uri),
-            &Method::POST => client.post(uri),
-            &Method::PUT => client.put(uri),
-            &Method::PATCH => client.patch(uri),
-            &Method::DELETE => client.delete(uri),
-            _ => return Err(ServerError::UnsupportedHttpMethod.http_status_400().into()),
+        let mut response = match *method {
+            Method::GET => client.get(uri),
+            Method::POST => client.post(uri),
+            Method::PUT => client.put(uri),
+            Method::PATCH => client.patch(uri),
+            Method::DELETE => client.delete(uri),
+            _ => return Err(ServerError::UnsupportedHttpMethod).into_http_400(),
         }
         .append_header((awc::http::header::CONTENT_TYPE, mime::APPLICATION_JSON))
         .send_body(body)
         .await
-        .map_err(|_| ServerError::SendRequestToCoreService.http_status_500())?;
+        .map_err(|_| ServerError::SendRequestToCoreService)
+        .into_http_500()?;
 
         Ok(HttpResponseBuilder::new(response.status()).body(
             response
                 .body()
                 .await
-                .map_err(|_| ServerError::SendRequestToCoreService.http_status_500())?,
+                .map_err(|_| ServerError::SendRequestToCoreService)
+                .into_http_500()?,
         ))
     }
 }

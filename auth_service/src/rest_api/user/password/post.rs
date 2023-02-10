@@ -1,7 +1,7 @@
 use crate::{
     database::{password_recovery, user::User},
     error::{ResponseError, ServerError},
-    rest_api::{decode_rsa_parameter, into_success_response},
+    rest_api::{into_success_response, RsaEncodedParameter},
     server_state::ServerState,
 };
 use actix_web::{web, HttpResponse};
@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct Request {
-    pub nonce_email: String, // RSA-OAEP(nonce + email, base58), base58, OAEP SHA-256 padding
+    pub nonce_email: RsaEncodedParameter,
     pub nonce: i64,
 }
 
@@ -21,7 +21,7 @@ pub async fn execute(
     st: web::Data<ServerState>,
     data: web::Json<Request>,
 ) -> actix_web::Result<HttpResponse> {
-    let nonce_email = decode_rsa_parameter(&data.nonce_email, "nonce_email".to_string(), &st)?;
+    let nonce_email = data.nonce_email.decode("nonce_email".to_string(), &st)?;
     let nonce_str = data.nonce.to_string();
 
     if nonce_str.len() >= nonce_email.len() {
@@ -34,7 +34,7 @@ pub async fn execute(
         return Err(ServerError::WrongNonce.http_status_400().into());
     }
 
-    let user_id = User::get_id(&fetched_email, &st.db_connection.pool)
+    let user_id = User::get_id(fetched_email, &st.db_connection.pool)
         .await
         .map_err(|e| e.http_status_500())?
         .ok_or_else(|| ServerError::UserNotFound(fetched_email.to_string()).http_status_404())?;
@@ -51,12 +51,12 @@ pub async fn execute(
     // @TODO: Generate randomly.
     let access_code = "ACCESS_CODE";
 
-    password_recovery::add(user_id, &access_code, &st.db_connection.pool)
+    password_recovery::add(user_id, access_code, &st.db_connection.pool)
         .await
         .map_err(|e| e.http_status_500())?;
 
     st.mailer
-        .send_email(&fetched_email, &access_code)
+        .send_email(fetched_email, access_code)
         .await
         .map_err(|e| e.http_status_500())?;
 

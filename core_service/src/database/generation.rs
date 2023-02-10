@@ -43,7 +43,7 @@ impl Generation {
         )
         .fetch_one(executor)
         .await
-        .map_err(|e| ServerError::Database(e))?
+        .map_err(ServerError::Database)?
         .id)
     }
 
@@ -65,7 +65,7 @@ impl Generation {
         )
         .fetch_all(executor)
         .await
-        .map_err(|e| ServerError::Database(e))?
+        .map_err(ServerError::Database)?
         .into_iter()
         .map(|res| Generation {
             name: res.name,
@@ -81,8 +81,8 @@ impl Generation {
             setup_type_json: res.setup_type_json,
 
             tick_period: res.tick_period,
-            last_send_num: res.last_send_num as i64,
-            last_cell_num: res.last_cell_num as i64,
+            last_send_num: res.last_send_num,
+            last_cell_num: res.last_cell_num,
             description: res.description,
         })
         .collect())
@@ -99,7 +99,7 @@ impl Generation {
         )
         .execute(executor)
         .await
-        .map_err(|e| ServerError::Database(e))?
+        .map_err(ServerError::Database)?
         .rows_affected()
             == 1)
     }
@@ -135,7 +135,7 @@ impl Generation {
         )
         .execute(executor)
         .await
-        .map_err(|e| ServerError::Database(e))?
+        .map_err(ServerError::Database)?
         .rows_affected()
             == 1)
     }
@@ -159,7 +159,7 @@ impl Generation {
         )
         .fetch_one(executor)
         .await
-        .map_err(|e| ServerError::Database(e))?;
+        .map_err(ServerError::Database)?;
 
         Ok(ticks_and_period.tick_period
             * BigDecimal::from_i64(ticks_and_period.last_send_num).unwrap())
@@ -190,7 +190,7 @@ impl Generation {
         )
         .execute(executor)
         .await
-        .map_err(|e| ServerError::Database(e))?;
+        .map_err(ServerError::Database)?;
 
         Ok(())
     }
@@ -224,7 +224,7 @@ impl GenerationNameDescription {
         )
         .execute(executor)
         .await
-        .map_err(|e| ServerError::Database(e))?
+        .map_err(ServerError::Database)?
         .rows_affected()
             == 1)
     }

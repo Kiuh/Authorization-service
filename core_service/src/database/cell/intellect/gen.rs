@@ -26,7 +26,7 @@ impl GenWithIntellectId {
             .into_iter()
             .map(|gen| {
                 (
-                    gen.intellect_id as i32,
+                    gen.intellect_id,
                     gen.gen.from_id as i32,
                     gen.gen.to_id as i32,
                     gen.gen.weight,
@@ -48,7 +48,7 @@ impl GenWithIntellectId {
         )
         .execute(executor)
         .await
-        .map_err(|e| ServerError::Database(e))?;
+        .map_err(ServerError::Database)?;
 
         Ok(())
     }

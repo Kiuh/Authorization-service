@@ -1,5 +1,5 @@
 use crate::{
-    error::{ResponseError, ServerError},
+    error::{IntoHttpResult, ServerError},
     server_state::ServerState,
 };
 use actix_web::web;
@@ -46,35 +46,37 @@ macro_rules! into_success_response {
 }
 pub(crate) use into_success_response;
 
-// @TODO: implement on type system level.
-fn decode_rsa_parameter(
-    encoded: &str,
-    parameter_name: String,
-    st: &web::Data<ServerState>,
-) -> actix_web::Result<String> {
-    let encoded_bytes = bs58::decode(encoded).into_vec().map_err(|_| {
-        ServerError::Base58Decode {
-            parameter_name: parameter_name.clone(),
-        }
-        .http_status_400()
-    })?;
+// RSA-OAEP(PARAM), base58, OAEP SHA-256 padding
+#[derive(Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct RsaEncodedParameter(String);
 
-    let decoded_bytes = st
-        .keys
-        .private
-        .decrypt(Oaep::new::<sha2::Sha256>(), &encoded_bytes)
-        .map_err(|_| {
-            ServerError::RsaDecode {
+impl RsaEncodedParameter {
+    pub fn decode(
+        &self,
+        parameter_name: String,
+        st: &web::Data<ServerState>,
+    ) -> actix_web::Result<String> {
+        let encoded_bytes = bs58::decode(&self.0)
+            .into_vec()
+            .map_err(|_| ServerError::Base58Decode {
                 parameter_name: parameter_name.clone(),
-            }
-            .http_status_400()
-        })?;
+            })
+            .into_http_400()?;
 
-    String::from_utf8(decoded_bytes).map_err(|_| {
-        ServerError::WrongTextEncoding {
-            parameter_name: parameter_name.clone(),
-        }
-        .http_status_400()
-        .into()
-    })
+        let decoded_bytes = st
+            .keys
+            .private
+            .decrypt(Oaep::new::<sha2::Sha256>(), &encoded_bytes)
+            .map_err(|_| ServerError::RsaDecode {
+                parameter_name: parameter_name.clone(),
+            })
+            .into_http_400()?;
+
+        String::from_utf8(decoded_bytes)
+            .map_err(|_| ServerError::WrongTextEncoding {
+                parameter_name: parameter_name.clone(),
+            })
+            .into_http_400()
+    }
 }

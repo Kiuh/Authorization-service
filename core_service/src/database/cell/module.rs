@@ -47,7 +47,7 @@ impl ModuleWithCellId {
             r#"INSERT INTO modules(cell_id, name) SELECT * FROM UNNEST($1::INTEGER[], $2::VARCHAR[])"#,
             &cell_ids,
             &names
-        ).execute(executor).await.map_err(|e| ServerError::Database(e))?;
+        ).execute(executor).await.map_err(ServerError::Database)?;
 
         Ok(())
     }
@@ -75,7 +75,7 @@ impl ModuleWithCellId {
             &cell_ids,
             &names,
             &values
-        ).execute(executor).await.map_err(|e| ServerError::Database(e))?;
+        ).execute(executor).await.map_err(ServerError::Database)?;
 
         Ok(())
     }

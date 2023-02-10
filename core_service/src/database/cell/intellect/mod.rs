@@ -41,7 +41,7 @@ impl IntellectWithCellId {
             .enumerate()
             .map(|(intellect_index, intellect)| {
                 (
-                    intellect.cell_id as i32,
+                    intellect.cell_id,
                     intellect.intellect.in_neuron_count as i32,
                     intellect.intellect.out_neuron_count as i32,
                     intellect
@@ -79,7 +79,7 @@ impl IntellectWithCellId {
         )
         .fetch_all(executor.clone())
         .await
-        .map_err(|e| ServerError::Database(e))?
+        .map_err(ServerError::Database)?
         .into_iter()
         .map(|res| res.id)
         .collect();
@@ -137,7 +137,7 @@ impl Intellect {
         )
         .fetch_one(executor)
         .await
-        .map_err(|e| ServerError::Database(e))
+        .map_err(ServerError::Database)
         .map(|res| Intellect {
             in_neuron_count: res.in_neuron_count as u32,
             out_neuron_count: res.out_neuron_count as u32,

@@ -28,7 +28,7 @@ impl Removed {
         )
         .fetch_one(executor.clone())
         .await
-        .map_err(|e| ServerError::Database(e))?
+        .map_err(ServerError::Database)?
         .id;
 
         sqlx::query!(
@@ -51,7 +51,7 @@ impl Removed {
         )
         .execute(executor)
         .await
-        .map_err(|e| ServerError::Database(e))?;
+        .map_err(ServerError::Database)?;
 
         Ok(())
     }

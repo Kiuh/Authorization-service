@@ -44,7 +44,7 @@ impl ModuleChanged {
         )
         .execute(executor)
         .await
-        .map_err(|e| ServerError::Database(e))?;
+        .map_err(ServerError::Database)?;
 
         Ok(())
     }

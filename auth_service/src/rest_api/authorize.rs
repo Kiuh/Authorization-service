@@ -4,7 +4,7 @@ use sqlx::PgPool;
 
 use crate::{
     database::user::User,
-    error::{ResponseError, ServerError},
+    error::{IntoHttpResult, ServerError},
 };
 
 #[derive(Default)]
@@ -21,15 +21,18 @@ impl Headers {
                 "Signature" => {
                     headers.signature = value
                         .to_str()
-                        .map_err(|_| ServerError::WrongSignature.http_status_400())?
+                        .map_err(|_| ServerError::WrongSignature)
+                        .into_http_400()?
                         .to_string()
                 }
                 "Nonce" => {
                     headers.nonce = value
                         .to_str()
-                        .map_err(|_| ServerError::WrongNonce.http_status_400())?
+                        .map_err(|_| ServerError::WrongNonce)
+                        .into_http_400()?
                         .parse::<i64>()
-                        .map_err(|_| ServerError::WrongNonce.http_status_400())?
+                        .map_err(|_| ServerError::WrongNonce)
+                        .into_http_400()?
                 }
                 _ => {}
             }
@@ -45,10 +48,11 @@ pub async fn authorize(
 ) -> actix_web::Result<User> {
     let user = User::get(login, pool)
         .await
-        .map_err(|e| e.http_status_500())?
-        .ok_or_else(|| ServerError::UserNotFound(login.to_string()).http_status_400())?;
+        .into_http_500()?
+        .ok_or_else(|| ServerError::UserNotFound(login.to_string()))
+        .into_http_400()?;
 
-    let headers = Headers::extract(&request)?;
+    let headers = Headers::extract(request)?;
 
     let mut correct_signature = Sha256::new();
     correct_signature.update(&format!("{}{}{}", login, headers.nonce, user.data.password));
@@ -56,16 +60,16 @@ pub async fn authorize(
     let correct_signature = bs58::encode(correct_signature).into_string();
 
     if correct_signature != headers.signature {
-        return Err(ServerError::WrongSignature.http_status_400().into());
+        return ServerError::WrongSignature.into_http_400();
     }
 
     let nonce_valid = user
         .update_auth_nonce(headers.nonce, pool)
         .await
-        .map_err(|e| e.http_status_500())?;
+        .into_http_500()?;
 
     if !nonce_valid {
-        return Err(ServerError::WrongNonce.http_status_400().into());
+        return ServerError::WrongNonce.into_http_400();
     }
 
     Ok(user)

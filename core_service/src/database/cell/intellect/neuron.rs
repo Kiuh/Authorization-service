@@ -29,7 +29,7 @@ impl NeuronWithIntellectId {
             r#"INSERT INTO neurons(intellect_id, bias) SELECT * FROM UNNEST($1::INTEGER[], $2::DECIMAL[])"#,
             &intellect_ids,
             &biases,
-        ).execute(executor).await.map_err(|e| ServerError::Database(e))?;
+        ).execute(executor).await.map_err(ServerError::Database)?;
 
         Ok(())
     }

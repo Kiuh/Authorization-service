@@ -73,7 +73,6 @@ impl fmt::Display for ResponseErrorData {
 
 pub type Result<T = ()> = std::result::Result<T, ServerError>;
 
-// @TODO: Auto-convert to http errors
 #[derive(Error, Debug)]
 pub enum ServerError {
     #[error("Failed connect to database: {0}")]

@@ -67,7 +67,7 @@ impl Cell {
         )
         .fetch_all(executor.clone())
         .await
-        .map_err(|e| ServerError::Database(e))?
+        .map_err(ServerError::Database)?
         .into_iter()
         .map(|res| res.id)
         .collect();
@@ -115,7 +115,7 @@ impl Cell {
         )
         .fetch_one(executor.clone())
         .await
-        .map_err(|e| ServerError::Database(e))?
+        .map_err(ServerError::Database)?
         .id;
 
         let alive: Vec<_> = sqlx::query!(
@@ -148,7 +148,7 @@ impl Cell {
         )
         .fetch_all(executor.clone())
         .await
-        .map_err(|e| ServerError::Database(e))?
+        .map_err(ServerError::Database)?
         .into_iter()
         .map(|res| PrefetchedCell {
             local_id: res.local_id,
@@ -184,7 +184,7 @@ impl Cell {
             )
             .fetch_all(executor.clone())
             .await
-            .map_err(|e| ServerError::Database(e))?
+            .map_err(ServerError::Database)?
             .into_iter()
             .map(|res| Module {
                 name: res.module_name,
