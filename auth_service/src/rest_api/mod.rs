@@ -3,6 +3,7 @@ use crate::{
     server_state::ServerState,
 };
 use actix_web::web;
+use base64::Engine;
 use rsa::Oaep;
 use serde::{Deserialize, Serialize};
 
@@ -57,8 +58,8 @@ impl RsaEncodedParameter {
         parameter_name: String,
         st: &web::Data<ServerState>,
     ) -> actix_web::Result<String> {
-        let encoded_bytes = bs58::decode(&self.0)
-            .into_vec()
+        let encoded_bytes = base64::engine::general_purpose::STANDARD
+            .decode(&self.0)
             .map_err(|_| ServerError::Base58Decode {
                 parameter_name: parameter_name.clone(),
             })

@@ -1,4 +1,5 @@
 use actix_web::HttpRequest;
+use base64::Engine;
 use sha2::{Digest, Sha256};
 use sqlx::PgPool;
 
@@ -57,7 +58,7 @@ pub async fn authorize(
     let mut correct_signature = Sha256::new();
     correct_signature.update(&format!("{}{}{}", login, headers.nonce, user.data.password));
     let correct_signature = correct_signature.finalize().to_vec();
-    let correct_signature = bs58::encode(correct_signature).into_string();
+    let correct_signature = base64::engine::general_purpose::STANDARD.encode(correct_signature);
 
     if correct_signature != headers.signature {
         return ServerError::WrongSignature.into_http_400();

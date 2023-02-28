@@ -287,8 +287,8 @@ version = "0.1.0"
 dependencies = [
  "actix-web",
  "awc",
+ "base64 0.21.0",
  "bigdecimal",
- "bs58",
  "clap",
  "itertools",
  "lettre",
@@ -407,12 +407,6 @@ dependencies = [
  "alloc-no-stdlib",
  "alloc-stdlib",
 ]
-
-[[package]]
-name = "bs58"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "771fe0050b883fcc3ea2359b1a96bcfbc090b7116eae7c3c512c7a083fdf23d3"
 
 [[package]]
 name = "bumpalo"
