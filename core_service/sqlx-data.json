@@ -33,6 +33,20 @@
     },
     "query": "\n                SELECT \n                    local_id, \n                    parent_id, \n                    intellect.id AS intellect_id\n                FROM cells \n                INNER JOIN intellect\n                ON cells.local_id = intellect.cell_id\n                WHERE generation_id = $1 \n                AND EXISTS\n                (\n                    SELECT * FROM diffs WHERE\n                    cell_id = cells.id AND\n                    tick_id <= $2 AND\n                    type = 'create_cell'\n                )\n                AND NOT EXISTS \n                (\n                    SELECT * FROM diffs WHERE \n                    cell_id = cells.id AND \n                    tick_id <= $2 AND \n                    type = 'remove_cell'\n                )\n            "
   },
+  "24efb27c133d26877d859ab4c962b8bb661f4c683c1fec601a2b784e6babf025": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int8",
+          "Int4"
+        ]
+      }
+    },
+    "query": " \n                UPDATE \n                    generations\n                SET \n                    last_send_num = GREATEST($1, last_send_num), \n                    last_cell_num = GREATEST($2, last_cell_num)\n                WHERE \n                    id = $3\n            "
+  },
   "2637833c7a75610f248cff928e2b7da606d00a0f22dd8ff856cf68de6b3c9520": {
     "describe": {
       "columns": [
@@ -181,21 +195,6 @@
       }
     },
     "query": "\n                SELECT id \n                FROM generations \n                WHERE generations.name = $1 AND owner_id = $2\n            "
-  },
-  "3b3df27eddf5b269b7e4cea75650f6fa030a012fbd46aa20951f87202ee4a6a1": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int8",
-          "Int8",
-          "Text",
-          "Int4"
-        ]
-      }
-    },
-    "query": " \n                UPDATE \n                    generations\n                SET \n                    last_send_num = GREATEST($1, last_send_num), \n                    last_cell_num = GREATEST($2, last_cell_num)\n                WHERE \n                    name = $3 AND owner_id = $4\n            "
   },
   "70d959d98ced3162e1a70d5930c58dc395bb1d9216d0c981b4efdb4fec4b3e1e": {
     "describe": {
