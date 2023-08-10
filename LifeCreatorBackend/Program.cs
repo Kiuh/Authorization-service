@@ -1,16 +1,60 @@
-using LifeCreatorBackend.DataBase;
+using LifeCreatorBackend.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-// получаем строку подключения из файла конфигурации
-string? connection = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<ApplicationDbContext>(
+    options => options.UseSqlServer(builder.Configuration.GetConnectionString("CoreDb"))
+);
 
-// добавляем контекст ApplicationContext в качестве сервиса в приложение
-builder.Services.AddDbContext<ApplicationContext>(options => options.UseSqlServer(connection));
+builder.Services.AddControllers();
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 WebApplication app = builder.Build();
 
-app.MapGet("/", (ApplicationContext db) => db.Users.ToList());
+using (
+    IServiceScope serviceScope = app.Services
+        .GetRequiredService<IServiceScopeFactory>()
+        .CreateScope()
+)
+{
+    ILogger<Program> logger = serviceScope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    DatabaseFacade db = serviceScope.ServiceProvider
+        .GetRequiredService<ApplicationDbContext>()
+        .Database;
+
+    logger.LogInformation("Migrating database...");
+
+    while (!db.CanConnect())
+    {
+        logger.LogInformation("Database not ready yet; waiting...");
+        Thread.Sleep(1000);
+    }
+
+    try
+    {
+        serviceScope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.Migrate();
+        logger.LogInformation("Database migrated successfully.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while migrating the database.");
+    }
+}
+
+if (app.Environment.IsDevelopment())
+{
+    _ = app.UseSwagger();
+    _ = app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Life Creator v1"));
+}
+
+app.UseHttpsRedirection();
+
+app.UseAuthorization();
+
+app.MapControllers();
 
 app.Run();

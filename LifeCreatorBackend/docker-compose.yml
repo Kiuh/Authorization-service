@@ -1,0 +1,28 @@
+﻿version: "3.9"
+
+services:
+  lcb_api:
+    build:
+        context: .
+        dockerfile: Dockerfile
+    container_name: lcb_api_app
+    environment:
+        ASPNETCORE_ENVIRONMENT: Development
+    ports:
+        - "5000:80"
+    depends_on:
+        - lcb_sql_db
+
+  lcb_sql_db:
+    image: "mcr.microsoft.com/mssql/server:2022-latest"
+    container_name: lcb_sql_db
+    user: root
+    environment:
+        - ACCEPT_EULA=y
+        - MSSQL_SA_PASSWORD=AVeryComplex123Password
+        - MSSQL_PID=Express
+    volumes:
+        - lcb_data:/var/opt/mssql/data
+
+volumes:
+  lcb_data:
