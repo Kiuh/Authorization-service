@@ -19,8 +19,8 @@ public sealed class UsersController : ControllerBase
     }
 
     //Signature: SHA256(Login + Nonce + HashedPassword)
-    [HttpPost("/LogIn")]
-    public IActionResult Login([FromHeader] string Nonce, [FromBody] JsonElement bodyJson)
+    [HttpPost("/Users/LogIn")]
+    public IActionResult Login([FromBody] JsonElement bodyJson)
     {
         LogInData? logInData = JsonSerializer.Deserialize<LogInData>(bodyJson);
         if (logInData is null)
@@ -32,15 +32,27 @@ public sealed class UsersController : ControllerBase
             return Problem("Internal error");
         }
         User? user = appDbContext.Users
-            ?.ToList()
-            .Find(x => (x.Login + Nonce + x.HashedPassword).GetHash() == logInData.Signature);
-        return user is null ? NotFound() : Accepted();
+            .ToList()
+            .Find(
+                x => (x.Login + logInData.Nonce + x.HashedPassword).GetHash() == logInData.Signature
+            );
+        return user is null
+            ? NotFound(
+                JsonSerializer.Serialize(
+                    appDbContext.Users
+                        .ToList()
+                        .Select(x => (x.Login + logInData.Nonce + x.HashedPassword).GetHash())
+                        .Concat(new List<string>() { logInData.Signature })
+                )
+            )
+            : Accepted();
     }
 
     [Serializable]
     public sealed class LogInData
     {
         public required string Signature { get; set; }
+        public required string Nonce { get; set; }
     }
 
     [HttpPost]

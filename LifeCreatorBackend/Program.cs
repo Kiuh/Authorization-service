@@ -55,8 +55,6 @@ if (app.Environment.IsDevelopment())
     _ = app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Life Creator v1"));
 }
 
-app.UseHttpsRedirection();
-
 app.UseAuthorization();
 
 app.MapControllers();
