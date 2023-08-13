@@ -1,12 +1,15 @@
-﻿using LifeCreatorBackend.Data;
+﻿using LifeCreatorBackend.Common;
+using LifeCreatorBackend.Data;
 using LifeCreatorBackend.Models;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace LifeCreatorBackend.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class UsersController : ControllerBase
+public sealed class UsersController : ControllerBase
 {
     private readonly ApplicationDbContext appDbContext;
 
@@ -15,36 +18,81 @@ public class UsersController : ControllerBase
         this.appDbContext = appDbContext;
     }
 
-    [HttpGet]
-    public ActionResult Get()
+    //Signature: SHA256(Login + Nonce + HashedPassword)
+    [HttpPost("/LogIn")]
+    public IActionResult Login([FromHeader] string Nonce, [FromBody] JsonElement bodyJson)
     {
-        _ = appDbContext.Users?.Add(
-            new User()
+        LogInData? logInData = JsonSerializer.Deserialize<LogInData>(bodyJson);
+        if (logInData is null)
+        {
+            return BadRequest("Cannot deserialize body.");
+        }
+        if (appDbContext.Users is null)
+        {
+            return Problem("Internal error");
+        }
+        User? user = appDbContext.Users
+            ?.ToList()
+            .Find(x => (x.Login + Nonce + x.HashedPassword).GetHash() == logInData.Signature);
+        return user is null ? NotFound() : Accepted();
+    }
+
+    [Serializable]
+    public sealed class LogInData
+    {
+        public required string Signature { get; set; }
+    }
+
+    [HttpPost]
+    public IActionResult Registration([FromBody] JsonElement bodyJson)
+    {
+        RegistrationData? registrationData = JsonSerializer.Deserialize<RegistrationData>(bodyJson);
+        if (registrationData is null)
+        {
+            return BadRequest("Cannot deserialize body.");
+        }
+        if (appDbContext.Users is null)
+        {
+            return Problem("Internal error");
+        }
+        List<User> users = appDbContext.Users.ToList();
+        if (users.Any(x => x.Login == registrationData.Login))
+        {
+            return BadRequest("This login is already taken.");
+        }
+
+        string email = registrationData.EncryptedNonceWithEmail
+            .GetDecrypted(Cryptography.CryptoService)
+            .Replace(registrationData.Nonce, "");
+
+        if (!new EmailAddressAttribute().IsValid(email))
+        {
+            return BadRequest("Invalid email.");
+        }
+        if (users.Any(x => x.Email == email))
+        {
+            return BadRequest("This email is already in use.");
+        }
+        User newUser =
+            new()
             {
-                Login = "LogIn",
-                Email = $"jj{new Random().Next(0, 100)}",
-                Password = $"{new Random().Next(0, 10000)}"
-            }
-        );
-
-        _ = appDbContext.Users?.Add(new User() { Login = "LogIn", Email = $"jj" });
-
+                Login = registrationData.Login,
+                Email = email,
+                HashedPassword = registrationData.EncryptedHashedPassword.GetDecrypted(
+                    Cryptography.CryptoService
+                )
+            };
+        _ = appDbContext.Users.Add(newUser);
         _ = appDbContext.SaveChanges();
+        return Accepted();
+    }
 
-        string str = "";
-        List<User>? users = appDbContext.Users?.ToList();
-        if (users is null)
-        {
-            str = "No Users table";
-        }
-        else
-        {
-            str += "Список объектов:\n";
-            foreach (User u in users.OrderBy(p => p.Id))
-            {
-                str += $"{u.Id}.{u.Login} - {u.Email} - {u.Password}\n";
-            }
-        }
-        return Ok(str);
+    [Serializable]
+    private sealed class RegistrationData
+    {
+        public required string Login { get; set; }
+        public required string EncryptedNonceWithEmail { get; set; }
+        public required string Nonce { get; set; }
+        public required string EncryptedHashedPassword { get; set; }
     }
 }

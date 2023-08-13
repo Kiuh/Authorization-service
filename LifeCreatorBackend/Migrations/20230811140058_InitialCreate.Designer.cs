@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LifeCreatorBackend.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20230810142541_InitialMigration")]
-    partial class InitialMigration
+    [Migration("20230811140058_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -35,10 +35,10 @@ namespace LifeCreatorBackend.Migrations
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Login")
+                    b.Property<string>("HashedPassword")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Password")
+                    b.Property<string>("Login")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
