@@ -9,7 +9,7 @@ public static class Cryptography
 
     public static ICryptoNet CryptoService => new CryptoNetRsa(privateKey);
 
-    public static void GenerateKeyPair()
+    static Cryptography()
     {
         ICryptoNet cryptoNet = new CryptoNetRsa();
         privateKey = cryptoNet.ExportKey(true);

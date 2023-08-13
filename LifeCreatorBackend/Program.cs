@@ -1,11 +1,8 @@
 using LifeCreatorBackend.Data;
-using LifeCreatorBackend.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-
-Cryptography.GenerateKeyPair();
 
 builder.Services.AddDbContext<ApplicationDbContext>(
     options => options.UseSqlServer(builder.Configuration.GetConnectionString("CoreDb"))
