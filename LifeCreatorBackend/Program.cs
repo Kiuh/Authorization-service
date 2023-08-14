@@ -10,8 +10,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(
 
 builder.Services.AddControllers();
 
-builder.Services.AddEndpointsApiExplorer();
-
 builder.Services.AddSwaggerGen();
 
 WebApplication app = builder.Build();
@@ -51,8 +49,6 @@ if (app.Environment.IsDevelopment())
     _ = app.UseSwagger();
     _ = app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Life Creator v1"));
 }
-
-app.UseAuthorization();
 
 app.MapControllers();
 
