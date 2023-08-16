@@ -7,16 +7,16 @@ EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 WORKDIR /src
-COPY ["LifeCreatorBackend.csproj", "."]
-RUN dotnet restore "./LifeCreatorBackend.csproj"
+COPY ["AuthorizationService/AuthorizationService.csproj", "AuthorizationService/"]
+RUN dotnet restore "AuthorizationService/AuthorizationService.csproj"
 COPY . .
-WORKDIR "/src/."
-RUN dotnet build "LifeCreatorBackend.csproj" -c Release -o /app/build
+WORKDIR "/src/AuthorizationService"
+RUN dotnet build "AuthorizationService.csproj" -c Release -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "LifeCreatorBackend.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "AuthorizationService.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "LifeCreatorBackend.dll"]
+ENTRYPOINT ["dotnet", "AuthorizationService.dll"]

@@ -1,6 +1,6 @@
 ﻿using CryptoNet;
 
-namespace LifeCreatorBackend.Models;
+namespace AuthorizationService.Models;
 
 public static class Cryptography
 {

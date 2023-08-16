@@ -1,0 +1,23 @@
+{
+  "profiles": {
+    "Desktop": {
+      "commandName": "Project",
+      "launchUrl": "swagger",
+      "launchBrowser":  true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "DesktopDevelopment"
+      },
+      "dotnetRunMessages": true,
+      "applicationUrl": "https://localhost:5000"
+    },
+    "Docker": {
+      "commandName": "Docker",
+      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}/swagger",
+      "environmentVariables": {
+        "ASPNETCORE_URLS": "https://+:443"
+      },
+      "publishAllPorts": true,
+      "useSSL": true
+    }
+  }
+}

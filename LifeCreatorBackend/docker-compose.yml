@@ -1,35 +1,32 @@
-﻿version: "3.9"
+version: "3.9"
 
 services:
-  api:
+  authorization:
     build:
-        context: .
-        dockerfile: Dockerfile
-    container_name: api_app
+      context: .
+      dockerfile: AuthorizationService/Dockerfile
     environment:
-        ASPNETCORE_ENVIRONMENT: Development
-        ASPNETCORE_URLS: https://+:80
-        ASPNETCORE_Kestrel__Certificates__Default__Password: Pass@*****
-        ASPNETCORE_Kestrel__Certificates__Default__Path: /https/httpsSecure.pfx
+      ASPNETCORE_ENVIRONMENT: DockerDevelopment
+      ASPNETCORE_URLS: https://+:80
+      ASPNETCORE_Kestrel__Certificates__Default__Password: ComplexPassword
+      ASPNETCORE_Kestrel__Certificates__Default__Path: /https/authorizationpassword.pfx
     ports:
-        - 5000:80
+      - 5000:80
     volumes:
-        - ./.aspnet/https:/https:ro
+      - ./AuthorizationService/.aspnet/https:/https:ro
     depends_on:
-        - sql_db
+      - postgres_db
 
-  sql_db:
-    image: "mcr.microsoft.com/mssql/server:2022-latest"
-    container_name: sql_db
-    user: root
+  postgres_db:
+    image: postgres
     environment:
-        - ACCEPT_EULA=y
-        - MSSQL_SA_PASSWORD=AVeryComplex123Password
-        - MSSQL_PID=Express
+      POSTGRES_DB: "LifeCreatorDb"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      PGDATA: "/var/lib/postgresql/data/pgdata"
     volumes:
-        - data:/var/opt/mssql/data
+      - authorization_data:/var/lib/postgresql/data
 
 volumes:
-  data:
-        
-          
+  authorization_data:
+  core_data:  

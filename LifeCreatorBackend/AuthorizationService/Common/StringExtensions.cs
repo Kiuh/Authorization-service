@@ -2,7 +2,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace LifeCreatorBackend.Common;
+namespace AuthorizationService.Common;
 
 public static class StringExtensions
 {

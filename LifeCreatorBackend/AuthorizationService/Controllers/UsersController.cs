@@ -1,51 +1,50 @@
-﻿using LifeCreatorBackend.Common;
-using LifeCreatorBackend.Data;
-using LifeCreatorBackend.Models;
+﻿using AuthorizationService.Common;
+using AuthorizationService.Data;
+using AuthorizationService.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
+using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json;
 
-namespace LifeCreatorBackend.Controllers;
+namespace AuthorizationService.Controllers;
 
 [ApiController]
 [Route("[controller]")]
 public sealed class UsersController : ControllerBase
 {
-    private readonly ApplicationDbContext appDbContext;
+    private readonly AuthorizationDbContext authorizationDbContext;
 
-    public UsersController(ApplicationDbContext appDbContext)
+    public UsersController(AuthorizationDbContext dbContext)
     {
-        this.appDbContext = appDbContext;
+        authorizationDbContext = dbContext;
     }
 
     //Signature: SHA256(Login + Nonce + HashedPassword)
     [HttpPost("/Users/LogIn")]
     public IActionResult Login([FromBody] JsonElement bodyJson)
     {
-        LogInData? logInData = JsonSerializer.Deserialize<LogInData>(bodyJson);
+        LogInData? logInData = bodyJson.Deserialize<LogInData>();
         if (logInData is null)
         {
             return BadRequest("Cannot deserialize body.");
         }
-        if (appDbContext.Users is null)
+        List<User> users = authorizationDbContext.Users.ToList();
+        User? user = users.Find(
+            x => (x.Login + logInData.Nonce + x.HashedPassword).GetHash() == logInData.Signature
+        );
+        if (user is null)
         {
-            return Problem("Internal error");
+            return NotFound("User is not exist.");
         }
-        User? user = appDbContext.Users
-            .ToList()
-            .Find(
-                x => (x.Login + logInData.Nonce + x.HashedPassword).GetHash() == logInData.Signature
+        else
+        {
+            JwtSecurityToken jwtToken = JwtToken.GetJwtSecurityToken(user.Login);
+            Response.Headers.Add(
+                "JwtBearerToken",
+                new JwtSecurityTokenHandler().WriteToken(jwtToken)
             );
-        return user is null
-            ? NotFound(
-                JsonSerializer.Serialize(
-                    appDbContext.Users
-                        .ToList()
-                        .Select(x => (x.Login + logInData.Nonce + x.HashedPassword).GetHash())
-                        .Concat(new List<string>() { logInData.Signature })
-                )
-            )
-            : Accepted();
+            return Accepted();
+        }
     }
 
     [Serializable]
@@ -58,16 +57,16 @@ public sealed class UsersController : ControllerBase
     [HttpPost]
     public IActionResult Registration([FromBody] JsonElement bodyJson)
     {
-        RegistrationData? registrationData = JsonSerializer.Deserialize<RegistrationData>(bodyJson);
+        RegistrationData? registrationData = bodyJson.Deserialize<RegistrationData>();
         if (registrationData is null)
         {
             return BadRequest("Cannot deserialize body.");
         }
-        if (appDbContext.Users is null)
+        if (authorizationDbContext.Users is null)
         {
             return Problem("Internal error");
         }
-        List<User> users = appDbContext.Users.ToList();
+        List<User> users = authorizationDbContext.Users.ToList();
         if (users.Any(x => x.Login == registrationData.Login))
         {
             return BadRequest("This login is already taken.");
@@ -94,9 +93,12 @@ public sealed class UsersController : ControllerBase
                     Cryptography.CryptoService
                 )
             };
-        _ = appDbContext.Users.Add(newUser);
-        _ = appDbContext.SaveChanges();
-        return Accepted();
+
+        _ = authorizationDbContext.Users.Add(newUser);
+        _ = authorizationDbContext.SaveChanges();
+        return Ok(
+            $"Added and saved user: {JsonSerializer.Serialize(authorizationDbContext.Users.ToList())}"
+        );
     }
 
     [Serializable]
