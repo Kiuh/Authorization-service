@@ -1,0 +1,40 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <style>
+        .inline {
+            display: inline;
+        }
+
+        .link-button {
+            background: none;
+            border: none;
+            color: blue;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 1em;
+            font-family: serif;
+        }
+
+            .link-button:focus {
+                outline: none;
+            }
+
+            .link-button:active {
+                color: red;
+            }
+    </style>
+</head>
+<body>
+    <h2>This is email for registration.</h2>
+    <form method="post" action="https://localhost:5000/Users/EmailRegistration" class="inline">
+        <input type="hidden" name="EncryptedLogin" value="--ENCRYPTEDLOGIN--">
+        <input type="hidden" name="EncryptedEmail" value="--ENCRYPTEDEMAIL--">
+        <input type="hidden" name="EncryptedHashedPassword" value="--ENCRYPTEDHASHEDPASSWORD--">
+        <button type="submit" class="link-button">
+            This is a link for completing registration into app.
+        </button>
+    </form>
+</body>
+</html>

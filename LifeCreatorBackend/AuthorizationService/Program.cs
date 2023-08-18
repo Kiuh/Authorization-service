@@ -11,6 +11,9 @@ _ = builder.Services.AddDbContext<AuthorizationDbContext>(
         options.UseNpgsql(builder.Configuration.GetConnectionString("AuthorizationDbContext"))
 );
 
+builder.Services.Configure<MailSettings>(builder.Configuration.GetSection("MailSettings"));
+builder.Services.AddTransient<IMailService, MailService>();
+
 _ = builder.Services.AddControllers();
 _ = builder.Services.AddSwaggerGen();
 

@@ -1,6 +1,7 @@
 ﻿using AuthorizationService.Common;
 using AuthorizationService.Data;
 using AuthorizationService.Models;
+using AuthorizationService.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
@@ -13,9 +14,11 @@ namespace AuthorizationService.Controllers;
 public sealed class UsersController : ControllerBase
 {
     private readonly AuthorizationDbContext authorizationDbContext;
+    private readonly IMailService mailService;
 
-    public UsersController(AuthorizationDbContext dbContext)
+    public UsersController(AuthorizationDbContext dbContext, IMailService mailService)
     {
+        this.mailService = mailService;
         authorizationDbContext = dbContext;
     }
 
@@ -62,12 +65,8 @@ public sealed class UsersController : ControllerBase
         {
             return BadRequest("Cannot deserialize body.");
         }
-        if (authorizationDbContext.Users is null)
-        {
-            return Problem("Internal error");
-        }
-        List<User> users = authorizationDbContext.Users.ToList();
-        if (users.Any(x => x.Login == registrationData.Login))
+
+        if (authorizationDbContext.Users.Any(x => x.Login == registrationData.Login))
         {
             return BadRequest("This login is already taken.");
         }
@@ -80,25 +79,40 @@ public sealed class UsersController : ControllerBase
         {
             return BadRequest("Invalid email.");
         }
-        if (users.Any(x => x.Email == email))
+        if (authorizationDbContext.Users.Any(x => x.Email == email))
         {
             return BadRequest("This email is already in use.");
         }
-        User newUser =
-            new()
-            {
-                Login = registrationData.Login,
-                Email = email,
-                HashedPassword = registrationData.EncryptedHashedPassword.GetDecrypted(
-                    Cryptography.CryptoService
-                )
-            };
 
-        _ = authorizationDbContext.Users.Add(newUser);
-        _ = authorizationDbContext.SaveChanges();
-        return Ok(
-            $"Added and saved user: {JsonSerializer.Serialize(authorizationDbContext.Users.ToList())}"
+        string htmlContent = System.IO.File.ReadAllText("./View/EmailBodyPrototype.html");
+        htmlContent = htmlContent.Replace(
+            "--ENCRYPTEDLOGIN--",
+            registrationData.Login.GetEncrypted(Cryptography.CryptoService)
         );
+        htmlContent = htmlContent.Replace(
+            "--ENCRYPTEDEMAIL--",
+            email.GetEncrypted(Cryptography.CryptoService)
+        );
+        htmlContent = htmlContent.Replace(
+            "--ENCRYPTEDHASHEDPASSWORD--",
+            registrationData.EncryptedHashedPassword
+        );
+
+        Result result = mailService
+            .SendAsync(
+                new MailData()
+                {
+                    ReceiverName = registrationData.Login,
+                    ReceiverEmail = email,
+                    Subject = "Registration confirm into LifeCreator",
+                    HtmlContent = htmlContent
+                }
+            )
+            .Result;
+
+        return result.Success
+            ? Ok("Mail has successfully been sent.")
+            : Problem($"An error occurred. The Mail could not be sent. Problem: {result.Error}");
     }
 
     [Serializable]
@@ -108,5 +122,24 @@ public sealed class UsersController : ControllerBase
         public required string EncryptedNonceWithEmail { get; set; }
         public required string Nonce { get; set; }
         public required string EncryptedHashedPassword { get; set; }
+    }
+
+    [HttpPost("/Users/EmailRegistration")]
+    public IActionResult RegistrationByEmail(
+        [FromForm] string EncryptedLogin,
+        [FromForm] string EncryptedEmail,
+        [FromForm] string EncryptedHashedPassword
+    )
+    {
+        User newUser =
+            new()
+            {
+                Login = EncryptedLogin.GetDecrypted(Cryptography.CryptoService),
+                Email = EncryptedEmail.GetDecrypted(Cryptography.CryptoService),
+                HashedPassword = EncryptedHashedPassword.GetDecrypted(Cryptography.CryptoService)
+            };
+        _ = authorizationDbContext.Users.Add(newUser);
+        _ = authorizationDbContext.SaveChanges();
+        return Ok("Successful registration.");
     }
 }

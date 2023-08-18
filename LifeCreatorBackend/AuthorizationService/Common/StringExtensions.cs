@@ -24,4 +24,10 @@ public static class StringExtensions
         byte[] encrypted = rsa.DecryptToBytes(bytes);
         return Encoding.UTF8.GetString(encrypted);
     }
+
+    public static string GetEncrypted(this string value, ICryptoNet rsa)
+    {
+        byte[] encrypted = rsa.EncryptFromString(value);
+        return Convert.ToBase64String(encrypted);
+    }
 }
