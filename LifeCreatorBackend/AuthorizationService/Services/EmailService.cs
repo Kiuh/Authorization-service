@@ -23,7 +23,7 @@ public class MailData
 
 public interface IMailService
 {
-    Task<Result> SendAsync(MailData mailData);
+    public Task<Result> SendAsync(MailData mailData);
 }
 
 /// <summary>

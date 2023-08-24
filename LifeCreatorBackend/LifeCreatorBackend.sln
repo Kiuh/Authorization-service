@@ -9,8 +9,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CoreService", "CoreService\
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{85572D9E-690A-4B21-A269-189DDCE44890}"
 	ProjectSection(SolutionItems) = preProject
-		docker-compose.yml = docker-compose.yml
 		docker-compose.prod.yml = docker-compose.prod.yml
+		docker-compose.yml = docker-compose.yml
+		secrets-sheme.json = secrets-sheme.json
 	EndProjectSection
 EndProject
 Global

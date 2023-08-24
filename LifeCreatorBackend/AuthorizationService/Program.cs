@@ -56,7 +56,11 @@ _ = builder.Services.AddSingleton<IDbInitializeService, DbInitializeService>();
 builder.Services.Configure<CryptographyServiceSettings>(
     builder.Configuration.GetSection("CryptographySettings")
 );
+
 _ = builder.Services.AddTransient<ICryptographyService, CryptographyService>();
+_ = builder.Services.AddSingleton<IMailBodyBuilder, MailBodyBuilderService>();
+
+builder.Services.AddRazorPages();
 
 WebApplication app = builder.Build();
 

@@ -1,0 +1,19 @@
+﻿@page
+
+@using AuthorizationService.Views.ErrorPage
+@model Model
+
+@{
+    ViewData["Title"] = @Model.Title;
+}
+
+
+<div class="container" style="text-align: center;  color: #888;">
+    <h1 style="font-size: 150px; color: #888; margin-bottom: 0px;">@Model.StatusCodeNumber</h1>
+    <p style="font-size: 50px; ">@Model.Title</p>
+    @foreach (var item in Model.Labels)
+    {
+        <p>@item</p>
+    }
+</div>
+

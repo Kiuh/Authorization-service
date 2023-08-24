@@ -2,10 +2,11 @@
 using AuthorizationService.Data;
 using AuthorizationService.Models;
 using AuthorizationService.Services;
+using AuthorizationService.Views.ErrorPage;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json;
 
 namespace AuthorizationService.Controllers;
 
@@ -17,6 +18,7 @@ public sealed class AuthorizationController : ControllerBase
     private readonly ICryptographyService cryptographyService;
     private readonly IMailService mailService;
     private readonly IJwtTokenService jwtTokenService;
+    private readonly IMailBodyBuilder mailBodyBuilder;
     private readonly TokensLifeTimeSettings tokensLifeTimeSettings;
 
     public AuthorizationController(
@@ -24,6 +26,7 @@ public sealed class AuthorizationController : ControllerBase
         IMailService mailService,
         ICryptographyService cryptographyService,
         IJwtTokenService jwtTokenService,
+        IMailBodyBuilder mailBodyBuilder,
         IOptions<TokensLifeTimeSettings> tokensLifeTimeSettings
     )
     {
@@ -31,19 +34,21 @@ public sealed class AuthorizationController : ControllerBase
         this.mailService = mailService;
         this.cryptographyService = cryptographyService;
         this.jwtTokenService = jwtTokenService;
+        this.mailBodyBuilder = mailBodyBuilder;
         this.tokensLifeTimeSettings = tokensLifeTimeSettings.Value;
     }
 
-    [HttpPost("/Authorization/LogIn")]
-    public IActionResult Login([FromBody] JsonElement bodyJson)
+    [Serializable]
+    public sealed class LogInData
     {
-        LogInData? logInData = bodyJson.Deserialize<LogInData>();
-        if (logInData is null)
-        {
-            return BadRequest("Cannot deserialize body.");
-        }
-        List<User> users = authorizationDbContext.Users.ToList();
-        User? user = users.Find(
+        public required string Signature { get; set; }
+        public required string Nonce { get; set; }
+    }
+
+    [HttpPost("/Authorization/LogIn")]
+    public IActionResult Login([FromBody] LogInData logInData)
+    {
+        User? user = authorizationDbContext.Users.FirstOrDefault(
             x =>
                 cryptographyService.HashString(x.Login + logInData.Nonce + x.HashedPassword)
                 == logInData.Signature
@@ -62,22 +67,17 @@ public sealed class AuthorizationController : ControllerBase
         }
     }
 
-    [Serializable]
-    public sealed class LogInData
+    public sealed class RegistrationData
     {
-        public required string Signature { get; set; }
+        public required string Login { get; set; }
+        public required string EncryptedNonceWithEmail { get; set; }
         public required string Nonce { get; set; }
+        public required string EncryptedHashedPassword { get; set; }
     }
 
     [HttpPost("/Authorization/Registration")]
-    public IActionResult Registration([FromBody] JsonElement bodyJson)
+    public async Task<IActionResult> Registration([FromBody] RegistrationData registrationData)
     {
-        RegistrationData? registrationData = bodyJson.Deserialize<RegistrationData>();
-        if (registrationData is null)
-        {
-            return BadRequest("Cannot deserialize body.");
-        }
-
         if (authorizationDbContext.Users.Any(x => x.Login == registrationData.Login))
         {
             return BadRequest("This login is already taken.");
@@ -107,16 +107,16 @@ public sealed class AuthorizationController : ControllerBase
                 RegistrationDate = DateTime.UtcNow,
                 EmailVerification = EmailVerificationState.NotVitrificated
             };
-        _ = authorizationDbContext.Users.Add(newUser);
-        _ = authorizationDbContext.SaveChanges();
+        _ = await authorizationDbContext.Users.AddAsync(newUser);
+        _ = await authorizationDbContext.SaveChangesAsync();
 
-        User? addedUser = authorizationDbContext.Users.FirstOrDefault(
+        User? addedUser = await authorizationDbContext.Users.FirstOrDefaultAsync(
             x => x.Login == newUser.Login
         );
 
         if (addedUser == null)
         {
-            return Problem("Cannot add new User");
+            return Problem("Internal server error");
         }
 
         EmailVerification emailVerification =
@@ -130,55 +130,46 @@ public sealed class AuthorizationController : ControllerBase
                 RequestDate = DateTime.UtcNow
             };
 
-        _ = authorizationDbContext.EmailVerifications.Add(emailVerification);
-        _ = authorizationDbContext.SaveChanges();
+        _ = await authorizationDbContext.EmailVerifications.AddAsync(emailVerification);
+        _ = await authorizationDbContext.SaveChangesAsync();
 
-        string htmlContent = System.IO.File.ReadAllText(
-            "./View/EmailBodyPrototypes/Registration.html"
-        );
-        htmlContent = htmlContent.Replace("--JWTTOKEN--", emailVerification.JwtToken);
-
-        Result result = mailService
-            .SendAsync(
-                new MailData()
-                {
-                    ReceiverName = registrationData.Login,
-                    ReceiverEmail = email,
-                    Subject = "Registration confirm into LifeCreator",
-                    HtmlContent = htmlContent
-                }
+        Result result = await mailService.SendAsync(
+            mailBodyBuilder.VerificationMail(
+                registrationData.Login,
+                email,
+                emailVerification.JwtToken
             )
-            .Result;
+        );
 
         return result.Success
             ? Ok("Mail has successfully been sent.")
             : Problem($"An error occurred. The Mail could not be sent. Problem: {result.Error}");
     }
 
-    [Serializable]
-    private sealed class RegistrationData
-    {
-        public required string Login { get; set; }
-        public required string EncryptedNonceWithEmail { get; set; }
-        public required string Nonce { get; set; }
-        public required string EncryptedHashedPassword { get; set; }
-    }
-
     [HttpPost("/Authorization/EmailRegistration")]
-    public IActionResult RegistrationByEmail([FromForm] string JwtToken)
+    public async Task<IActionResult> RegistrationByEmail([FromForm] string JwtToken)
     {
         EmailVerification? emailVerification =
-            authorizationDbContext.EmailVerifications.FirstOrDefault(x => x.JwtToken == JwtToken);
+            await authorizationDbContext.EmailVerifications.FirstOrDefaultAsync(
+                x => x.JwtToken == JwtToken
+            );
         if (emailVerification is null)
         {
             return Problem("No such email verification request.");
         }
-        User? user = authorizationDbContext.Users.FirstOrDefault(
+        User? user = await authorizationDbContext.Users.FirstOrDefaultAsync(
             x => x.EmailVerifications.Contains(emailVerification)
         );
         if (user is null)
         {
-            return Problem("No such user with verification request.");
+            return RedirectToPage(
+                "Page",
+                new ErrorPageInfo(
+                    "500",
+                    "Internal Server Error",
+                    "No such user with verification request."
+                ).ToJson()
+            );
         }
         if (user.EmailVerification is EmailVerificationState.Vitrificated)
         {
@@ -189,32 +180,26 @@ public sealed class AuthorizationController : ControllerBase
             return Problem("Validation failed, try ReRegister.");
         }
         user.EmailVerification = EmailVerificationState.Vitrificated;
-        _ = authorizationDbContext.SaveChanges();
+        _ = await authorizationDbContext.SaveChangesAsync();
         return Ok("Successful registration.");
     }
 
-    [Serializable]
-    private sealed class ResendEmailVerificationData
+    public sealed class ResendEmailVerificationData
     {
         public required string EncryptedNonceWithEmail { get; set; }
         public required string Nonce { get; set; }
     }
 
     [HttpPost("/Authorization/ResendEmailVerification")]
-    public IActionResult ResendEmailVerification([FromBody] JsonElement bodyJson)
+    public async Task<IActionResult> ResendEmailVerification(
+        [FromBody] ResendEmailVerificationData resendEmailVerificationData
+    )
     {
-        ResendEmailVerificationData? resendEmailVerificationData =
-            bodyJson.Deserialize<ResendEmailVerificationData>();
-        if (resendEmailVerificationData is null)
-        {
-            return BadRequest("Cannot deserialize body.");
-        }
-
         string email = cryptographyService
             .DecryptString(resendEmailVerificationData.EncryptedNonceWithEmail)
             .Replace(resendEmailVerificationData.Nonce, "");
 
-        User? user = authorizationDbContext.Users.FirstOrDefault(x => x.Email == email);
+        User? user = await authorizationDbContext.Users.FirstOrDefaultAsync(x => x.Email == email);
 
         if (user is null)
         {
@@ -235,49 +220,31 @@ public sealed class AuthorizationController : ControllerBase
         _ = authorizationDbContext.EmailVerifications.Add(emailVerification);
         _ = authorizationDbContext.SaveChanges();
 
-        string htmlContent = System.IO.File.ReadAllText(
-            "./View/EmailBodyPrototypes/Registration.html"
+        Result result = await mailService.SendAsync(
+            mailBodyBuilder.VerificationMail(user.Login, email, emailVerification.JwtToken)
         );
-        htmlContent = htmlContent.Replace("--JWTTOKEN--", emailVerification.JwtToken);
-
-        Result result = mailService
-            .SendAsync(
-                new MailData()
-                {
-                    ReceiverName = user.Login,
-                    ReceiverEmail = email,
-                    Subject = "Duplicated Registration confirm into LifeCreator",
-                    HtmlContent = htmlContent
-                }
-            )
-            .Result;
 
         return result.Success
             ? Ok("Mail has successfully been sent.")
             : Problem($"An error occurred. The Mail could not be sent. Problem: {result.Error}");
     }
 
-    [Serializable]
-    private sealed class ForgotPasswordData
+    public sealed class ForgotPasswordData
     {
         public required string EncryptedNonceWithEmail { get; set; }
         public required string Nonce { get; set; }
     }
 
     [HttpPost("/Authorization/ForgotPassword")]
-    public IActionResult ForgotPassword([FromBody] JsonElement bodyJson)
+    public async Task<IActionResult> ForgotPassword(
+        [FromBody] ForgotPasswordData forgotPasswordData
+    )
     {
-        ForgotPasswordData? forgotPasswordData = bodyJson.Deserialize<ForgotPasswordData>();
-        if (forgotPasswordData is null)
-        {
-            return BadRequest("Cannot deserialize body.");
-        }
-
         string email = cryptographyService
             .DecryptString(forgotPasswordData.EncryptedNonceWithEmail)
             .Replace(forgotPasswordData.Nonce, "");
 
-        User? user = authorizationDbContext.Users.FirstOrDefault(x => x.Email == email);
+        User? user = await authorizationDbContext.Users.FirstOrDefaultAsync(x => x.Email == email);
 
         if (user is null)
         {
@@ -288,81 +255,54 @@ public sealed class AuthorizationController : ControllerBase
             new()
             {
                 User = user,
-                AccessCode = new Random().Next(10001, 99999),
+                AccessCode = new Random().Next(100001, 999999),
                 RequestDate = DateTime.UtcNow
             };
 
-        _ = authorizationDbContext.PasswordRecovers.Add(passwordRecover);
-        _ = authorizationDbContext.SaveChanges();
+        _ = await authorizationDbContext.PasswordRecovers.AddAsync(passwordRecover);
+        _ = await authorizationDbContext.SaveChangesAsync();
 
-        string htmlContent = System.IO.File.ReadAllText(
-            "./View/EmailBodyPrototypes/AccessCode.html"
+        Result result = await mailService.SendAsync(
+            mailBodyBuilder.AccessCodeMail(user.Login, email, passwordRecover.AccessCode)
         );
-        htmlContent = htmlContent.Replace(
-            "--ACCESSCODE--",
-            Convert.ToString(passwordRecover.AccessCode)
-        );
-
-        Result result = mailService
-            .SendAsync(
-                new MailData()
-                {
-                    ReceiverName = user.Login,
-                    ReceiverEmail = email,
-                    Subject = "AccessCode to recover password",
-                    HtmlContent = htmlContent
-                }
-            )
-            .Result;
 
         return result.Success
             ? Ok("Mail has successfully been sent.")
             : Problem($"An error occurred. The Mail could not be sent. Problem: {result.Error}");
     }
 
-    [Serializable]
-    private sealed class RecoverPasswordData
+    public sealed class RecoverPasswordData
     {
         public required int AccessCode { get; set; }
         public required string EncryptedHashedPassword { get; set; }
     }
 
     [HttpPost("/Authorization/RecoverPassword")]
-    public IActionResult RecoverPassword([FromBody] JsonElement bodyJson)
+    public async Task<IActionResult> RecoverPassword(
+        [FromBody] RecoverPasswordData recoverPasswordData
+    )
     {
-        RecoverPasswordData? recoverPasswordData = bodyJson.Deserialize<RecoverPasswordData>();
-        if (recoverPasswordData is null)
-        {
-            return BadRequest("Cannot deserialize body.");
-        }
-
-        List<PasswordRecover> codes = authorizationDbContext.PasswordRecovers
+        IEnumerable<PasswordRecover> codes = await authorizationDbContext.PasswordRecovers
             .Where(x => x.AccessCode == recoverPasswordData.AccessCode)
-            .ToList();
+            .ToListAsync();
 
-        if (codes.Count == 0)
+        if (codes.Any())
         {
             return BadRequest("Invalid Access code.");
         }
 
-        codes = codes
-            .Where(
-                x =>
-                    DateTime.UtcNow.Subtract(x.RequestDate)
-                    <= tokensLifeTimeSettings.AccessCodeDuration
-            )
-            .ToList();
+        codes = codes.Where(x => x.IsValid(tokensLifeTimeSettings.AccessCodeDuration));
 
-        if (codes.Count == 0)
+        if (codes.Any())
         {
             return BadRequest("Access code duration expired.");
         }
-        else if (codes.Count > 1)
+        else if (codes.Count() > 1)
         {
             return BadRequest("Internal error, try again.");
         }
 
-        User? user = authorizationDbContext.Users.FirstOrDefault(
+        User? user = await authorizationDbContext.Users.FirstOrDefaultAsync(
             x => x.PasswordRecovers.Contains(codes.Last())
         );
 
@@ -374,7 +314,7 @@ public sealed class AuthorizationController : ControllerBase
         user.HashedPassword = cryptographyService.DecryptString(
             recoverPasswordData.EncryptedHashedPassword
         );
-        _ = authorizationDbContext.SaveChanges();
+        _ = await authorizationDbContext.SaveChangesAsync();
 
         return Accepted("Password has been changed");
     }
