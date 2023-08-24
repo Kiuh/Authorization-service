@@ -5,9 +5,23 @@ using Microsoft.EntityFrameworkCore;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+builder.Configuration.AddUserSecrets<Program>();
+
+string connectionStringName;
+
+if (builder.Environment.EnvironmentName is "DockerDevelopment" or "Production")
+{
+    connectionStringName = "AuthorizationDbContextDocker";
+}
+else
+{
+    connectionStringName = builder.Environment.EnvironmentName is "DesktopDevelopment"
+        ? "AuthorizationDbContextWindows"
+        : throw new Exception("Unknown Environment");
+}
+
 _ = builder.Services.AddDbContext<AuthorizationDbContext>(
-    options =>
-        options.UseNpgsql(builder.Configuration.GetConnectionString("AuthorizationDbContext"))
+    options => options.UseNpgsql(builder.Configuration.GetConnectionString(connectionStringName))
 );
 
 builder.Services.Configure<MailServiceSettings>(builder.Configuration.GetSection("MailSettings"));

@@ -1,0 +1,4 @@
+services:
+  authorization:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production

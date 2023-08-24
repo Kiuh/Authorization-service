@@ -5,11 +5,12 @@ VisualStudioVersion = 17.7.33927.210
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AuthorizationService", "AuthorizationService\AuthorizationService.csproj", "{D55B3C5F-7807-4E87-8E7C-BFF09F6B24C3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoreService", "CoreService\CoreService.csproj", "{FAB9A87F-39DE-4240-8403-6BCAEEC45874}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CoreService", "CoreService\CoreService.csproj", "{FAB9A87F-39DE-4240-8403-6BCAEEC45874}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{85572D9E-690A-4B21-A269-189DDCE44890}"
 	ProjectSection(SolutionItems) = preProject
 		docker-compose.yml = docker-compose.yml
+		docker-compose.prod.yml = docker-compose.prod.yml
 	EndProjectSection
 EndProject
 Global

@@ -14,6 +14,7 @@ services:
       - 5000:80
     volumes:
       - ./AuthorizationService/.aspnet/https:/https:ro
+      - $APPDATA/Microsoft/UserSecrets/36c29860-ecc0-445b-b7aa-109d90c26842:/root/.microsoft/usersecrets/36c29860-ecc0-445b-b7aa-109d90c26842
     depends_on:
       - postgres_db
 
