@@ -1,14 +1,24 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace AuthorizationService.Models;
 
-public sealed class User
+public enum EmailVerificationState
 {
-    [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public long Id { get; set; }
+    Vitrificated,
+    NotVitrificated
+}
+
+[Index(nameof(Login), IsUnique = true)]
+[Index(nameof(Email), IsUnique = true)]
+public sealed class User : EntityBase
+{
     public string Login { get; set; } = "";
     public string Email { get; set; } = "";
+    public DateTime RegistrationDate { get; set; }
+    public EmailVerificationState EmailVerification { get; set; } =
+        EmailVerificationState.NotVitrificated;
     public string HashedPassword { get; set; } = "";
+    public ICollection<PasswordRecover> PasswordRecovers { get; } = new List<PasswordRecover>();
+    public ICollection<EmailVerification> EmailVerifications { get; } =
+        new List<EmailVerification>();
 }

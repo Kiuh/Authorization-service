@@ -28,10 +28,8 @@
 </head>
 <body>
     <h2>This is email for registration.</h2>
-    <form method="post" action="https://localhost:5000/Users/EmailRegistration" class="inline">
-        <input type="hidden" name="EncryptedLogin" value="--ENCRYPTEDLOGIN--">
-        <input type="hidden" name="EncryptedEmail" value="--ENCRYPTEDEMAIL--">
-        <input type="hidden" name="EncryptedHashedPassword" value="--ENCRYPTEDHASHEDPASSWORD--">
+    <form method="post" action="https://localhost:5000/Authorization/EmailRegistration" class="inline">
+        <input type="hidden" name="JwtToken" value="--JWTTOKEN--">
         <button type="submit" class="link-button">
             This is a link for completing registration into app.
         </button>

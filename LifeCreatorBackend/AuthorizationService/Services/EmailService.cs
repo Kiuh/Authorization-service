@@ -1,5 +1,4 @@
 ﻿using AuthorizationService.Common;
-using AuthorizationService.Models;
 using Microsoft.Extensions.Options;
 using sib_api_v3_sdk.Api;
 using sib_api_v3_sdk.Client;
@@ -7,17 +6,34 @@ using sib_api_v3_sdk.Model;
 
 namespace AuthorizationService.Services;
 
+public class MailServiceSettings
+{
+    public required string ApiKey { get; set; }
+    public required string SenderName { get; set; }
+    public required string SenderEmail { get; set; }
+}
+
+public class MailData
+{
+    public required string ReceiverName { get; set; }
+    public required string ReceiverEmail { get; set; }
+    public required string Subject { get; set; }
+    public required string HtmlContent { get; set; }
+}
+
 public interface IMailService
 {
     Task<Result> SendAsync(MailData mailData);
 }
 
-// Visit https://app.brevo.com/ to see data about sent emails
+/// <summary>
+/// Visit https://app.brevo.com/ to see data about sent emails
+/// </summary>
 public class MailService : IMailService
 {
-    private readonly MailSettings mailSettings;
+    private readonly MailServiceSettings mailSettings;
 
-    public MailService(IOptions<MailSettings> mailSettings)
+    public MailService(IOptions<MailServiceSettings> mailSettings)
     {
         this.mailSettings = mailSettings.Value;
     }
