@@ -4,8 +4,8 @@ namespace AuthorizationService.Models;
 
 public enum EmailVerificationState
 {
-    Vitrificated,
-    NotVitrificated
+    Verified,
+    NotVerified
 }
 
 [Index(nameof(Login), IsUnique = true)]
@@ -16,7 +16,7 @@ public sealed class User : EntityBase
     public string Email { get; set; } = "";
     public DateTime RegistrationDate { get; set; }
     public EmailVerificationState EmailVerification { get; set; } =
-        EmailVerificationState.NotVitrificated;
+        EmailVerificationState.NotVerified;
     public string HashedPassword { get; set; } = "";
     public ICollection<PasswordRecover> PasswordRecovers { get; } = new List<PasswordRecover>();
     public ICollection<EmailVerification> EmailVerifications { get; } =

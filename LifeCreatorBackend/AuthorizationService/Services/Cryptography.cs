@@ -49,7 +49,8 @@ public class Cryptography : ICryptographyService
 
     public string HashString(string input)
     {
-        byte[] hashedBytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        using SHA256 sha256Hash = SHA256.Create();
+        byte[] hashedBytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(input));
         StringBuilder sBuilder = new();
         for (int i = 0; i < hashedBytes.Length; i++)
         {

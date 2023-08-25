@@ -11,7 +11,6 @@ using System.ComponentModel.DataAnnotations;
 namespace AuthorizationService.Controllers;
 
 [ApiController]
-[Route("[controller]")]
 public sealed class AuthorizationController : ControllerBase
 {
     private readonly AuthorizationDbContext authorizationDbContext;
@@ -38,30 +37,49 @@ public sealed class AuthorizationController : ControllerBase
         this.tokensLifeTimeSettings = tokensLifeTimeSettings.Value;
     }
 
-    [Serializable]
+    [HttpGet("/PublicKey")]
+    public IActionResult GetPublicKey()
+    {
+        return Ok(cryptographyService.GetPublicKey());
+    }
+
     public sealed class LogInData
     {
         public required string Signature { get; set; }
         public required string Nonce { get; set; }
     }
 
-    [HttpPost("/Authorization/LogIn")]
-    public IActionResult Login([FromBody] LogInData logInData)
+    [HttpPost("/Login")]
+    public async Task<IActionResult> Login([FromBody] LogInData logInData)
     {
-        User? user = authorizationDbContext.Users.FirstOrDefault(
-            x =>
-                cryptographyService.HashString(x.Login + logInData.Nonce + x.HashedPassword)
-                == logInData.Signature
-        );
-        if (user is null)
+        User? foundUser = null;
+        foreach (User? user in await authorizationDbContext.Users.ToListAsync())
         {
-            return NotFound("User is not exist.");
+            if (
+                cryptographyService.HashString(user.Login + logInData.Nonce + user.HashedPassword)
+                == logInData.Signature
+            )
+            {
+                foundUser = user;
+                break;
+            }
+        }
+        if (foundUser is null)
+        {
+            return NotFound();
+        }
+        else if (foundUser.EmailVerification is EmailVerificationState.NotVerified)
+        {
+            return BadRequest(error: "Email not verified.");
         }
         else
         {
             Response.Headers.Add(
                 "JwtBearerToken",
-                jwtTokenService.GenerateToken(user.Login, tokensLifeTimeSettings.LoginTokenDuration)
+                jwtTokenService.GenerateToken(
+                    foundUser.Login,
+                    tokensLifeTimeSettings.LoginTokenDuration
+                )
             );
             return Accepted();
         }
@@ -75,12 +93,12 @@ public sealed class AuthorizationController : ControllerBase
         public required string EncryptedHashedPassword { get; set; }
     }
 
-    [HttpPost("/Authorization/Registration")]
+    [HttpPut("/Registration")]
     public async Task<IActionResult> Registration([FromBody] RegistrationData registrationData)
     {
         if (authorizationDbContext.Users.Any(x => x.Login == registrationData.Login))
         {
-            return BadRequest("This login is already taken.");
+            return BadRequest(error: "This login is already taken.");
         }
 
         string email = cryptographyService
@@ -89,11 +107,11 @@ public sealed class AuthorizationController : ControllerBase
 
         if (!new EmailAddressAttribute().IsValid(email))
         {
-            return BadRequest("Invalid email.");
+            return BadRequest(error: "Invalid email.");
         }
         if (authorizationDbContext.Users.Any(x => x.Email == email))
         {
-            return BadRequest("This email is already in use.");
+            return BadRequest(error: "This email is already in use.");
         }
 
         User newUser =
@@ -105,7 +123,7 @@ public sealed class AuthorizationController : ControllerBase
                     registrationData.EncryptedHashedPassword
                 ),
                 RegistrationDate = DateTime.UtcNow,
-                EmailVerification = EmailVerificationState.NotVitrificated
+                EmailVerification = EmailVerificationState.NotVerified
             };
         _ = await authorizationDbContext.Users.AddAsync(newUser);
         _ = await authorizationDbContext.SaveChangesAsync();
@@ -116,7 +134,7 @@ public sealed class AuthorizationController : ControllerBase
 
         if (addedUser == null)
         {
-            return Problem("Internal server error");
+            return Problem();
         }
 
         EmailVerification emailVerification =
@@ -136,19 +154,16 @@ public sealed class AuthorizationController : ControllerBase
         Result result = await mailService.SendAsync(
             mailBodyBuilder.VerificationMail(
                 registrationData.Login,
-                "",
                 email,
                 emailVerification.JwtToken
             )
         );
 
-        return result.Success
-            ? Ok("Mail has successfully been sent.")
-            : Problem($"An error occurred. The Mail could not be sent. Problem: {result.Error}");
+        return result.Success ? Ok() : Problem();
     }
 
-    [HttpPost("/Authorization/EmailRegistration")]
-    public async Task<IActionResult> RegistrationByEmail([FromForm] string JwtToken)
+    [HttpPost("/Verification")]
+    public async Task<IActionResult> Verification([FromForm] string JwtToken)
     {
         EmailVerification? emailVerification =
             await authorizationDbContext.EmailVerifications.FirstOrDefaultAsync(
@@ -181,7 +196,7 @@ public sealed class AuthorizationController : ControllerBase
                 }
             );
         }
-        if (user.EmailVerification is EmailVerificationState.Vitrificated)
+        if (user.EmailVerification is EmailVerificationState.Verified)
         {
             return RedirectToPage("/AlreadyVerified");
         }
@@ -197,7 +212,7 @@ public sealed class AuthorizationController : ControllerBase
                 }
             );
         }
-        user.EmailVerification = EmailVerificationState.Vitrificated;
+        user.EmailVerification = EmailVerificationState.Verified;
         _ = await authorizationDbContext.SaveChangesAsync();
 
         Result result = await mailService.SendAsync(
@@ -207,15 +222,15 @@ public sealed class AuthorizationController : ControllerBase
         return RedirectToPage("/SuccessVerification");
     }
 
-    public sealed class ResendEmailVerificationData
+    public sealed class ResendVerificationData
     {
         public required string EncryptedNonceWithEmail { get; set; }
         public required string Nonce { get; set; }
     }
 
-    [HttpPost("/Authorization/ResendEmailVerification")]
-    public async Task<IActionResult> ResendEmailVerification(
-        [FromBody] ResendEmailVerificationData resendEmailVerificationData
+    [HttpPost("/ResendRegistration")]
+    public async Task<IActionResult> ResendVerification(
+        [FromBody] ResendVerificationData resendEmailVerificationData
     )
     {
         string email = cryptographyService
@@ -226,7 +241,7 @@ public sealed class AuthorizationController : ControllerBase
 
         if (user is null)
         {
-            return BadRequest("User with this email is not exist.");
+            return BadRequest(error: "User with this email is not exist.");
         }
 
         EmailVerification emailVerification =
@@ -244,12 +259,10 @@ public sealed class AuthorizationController : ControllerBase
         _ = authorizationDbContext.SaveChanges();
 
         Result result = await mailService.SendAsync(
-            mailBodyBuilder.VerificationMail(user.Login, "", email, emailVerification.JwtToken)
+            mailBodyBuilder.VerificationMail(user.Login, email, emailVerification.JwtToken)
         );
 
-        return result.Success
-            ? Ok("Mail has successfully been sent.")
-            : Problem($"An error occurred. The Mail could not be sent. Problem: {result.Error}");
+        return result.Success ? Ok() : Problem();
     }
 
     public sealed class ForgotPasswordData
@@ -258,7 +271,7 @@ public sealed class AuthorizationController : ControllerBase
         public required string Nonce { get; set; }
     }
 
-    [HttpPost("/Authorization/ForgotPassword")]
+    [HttpPost("/ForgotPassword")]
     public async Task<IActionResult> ForgotPassword(
         [FromBody] ForgotPasswordData forgotPasswordData
     )
@@ -271,7 +284,12 @@ public sealed class AuthorizationController : ControllerBase
 
         if (user is null)
         {
-            return BadRequest("User with this email is not exist.");
+            return BadRequest(error: "User with this email is not exist.");
+        }
+
+        if (user.EmailVerification is EmailVerificationState.NotVerified)
+        {
+            return BadRequest(error: "Email not verified.");
         }
 
         PasswordRecover passwordRecover =
@@ -289,9 +307,7 @@ public sealed class AuthorizationController : ControllerBase
             mailBodyBuilder.AccessCodeMail(user.Login, email, passwordRecover.AccessCode)
         );
 
-        return result.Success
-            ? Ok("Mail has successfully been sent.")
-            : Problem($"An error occurred. The Mail could not be sent. Problem: {result.Error}");
+        return result.Success ? Ok() : Problem();
     }
 
     public sealed class RecoverPasswordData
@@ -300,7 +316,7 @@ public sealed class AuthorizationController : ControllerBase
         public required string EncryptedHashedPassword { get; set; }
     }
 
-    [HttpPost("/Authorization/RecoverPassword")]
+    [HttpPost("/RecoverPassword")]
     public async Task<IActionResult> RecoverPassword(
         [FromBody] RecoverPasswordData recoverPasswordData
     )
@@ -309,29 +325,34 @@ public sealed class AuthorizationController : ControllerBase
             .Where(x => x.AccessCode == recoverPasswordData.AccessCode)
             .ToListAsync();
 
-        if (codes.Any())
+        if (!codes.Any())
         {
-            return BadRequest("Invalid Access code.");
+            return BadRequest(error: "Invalid Access code.");
         }
 
         codes = codes.Where(x => x.IsValid(tokensLifeTimeSettings.AccessCodeDuration));
 
-        if (codes.Any())
+        if (!codes.Any())
         {
-            return BadRequest("Access code duration expired.");
+            return BadRequest(error: "Access code duration expired.");
         }
         else if (codes.Count() > 1)
         {
-            return BadRequest("Internal error, try again.");
+            return BadRequest(error: "Internal error, try again.");
         }
 
-        User? user = await authorizationDbContext.Users.FirstOrDefaultAsync(
-            x => x.PasswordRecovers.Contains(codes.Last())
+        User? user = authorizationDbContext.Users.FirstOrDefault(
+            x => x.PasswordRecovers.Contains(codes.First())
         );
 
         if (user == null)
         {
-            return BadRequest("Internal error, try again.");
+            return BadRequest(error: "Internal error, try again.");
+        }
+
+        if (user.EmailVerification is EmailVerificationState.NotVerified)
+        {
+            return BadRequest(error: "Email not verified.");
         }
 
         user.HashedPassword = cryptographyService.DecryptString(

@@ -23,7 +23,7 @@ public class MailBodyBuilder : IMailBodyBuilder
 
     public MailBodyBuilder(IOptions<MailBodyBuilderSettings> mailBodyBuilderSettings)
     {
-        string basePath = "./MailPrototypes/";
+        string basePath = "./Mails/";
         welcomeMailTemplate = File.ReadAllText(basePath + "Welcome.html");
         verificationMailTemplate = File.ReadAllText(basePath + "Verification.html");
         accessCodeMailTemplate = File.ReadAllText(basePath + "AccessCode.html");
