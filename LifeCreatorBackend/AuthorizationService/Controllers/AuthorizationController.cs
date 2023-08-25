@@ -66,11 +66,11 @@ public sealed class AuthorizationController : ControllerBase
         }
         if (foundUser is null)
         {
-            return NotFound();
+            return BadRequest("Invalid login or password.".ToErrorBody());
         }
         else if (foundUser.EmailVerification is EmailVerificationState.NotVerified)
         {
-            return BadRequest(error: "Email not verified.");
+            return BadRequest("Email not verified.".ToErrorBody());
         }
         else
         {
@@ -98,7 +98,7 @@ public sealed class AuthorizationController : ControllerBase
     {
         if (authorizationDbContext.Users.Any(x => x.Login == registrationData.Login))
         {
-            return BadRequest(error: "This login is already taken.");
+            return BadRequest("This login is already taken.".ToErrorBody());
         }
 
         string email = cryptographyService
@@ -107,11 +107,11 @@ public sealed class AuthorizationController : ControllerBase
 
         if (!new EmailAddressAttribute().IsValid(email))
         {
-            return BadRequest(error: "Invalid email.");
+            return BadRequest("Invalid email.".ToErrorBody());
         }
         if (authorizationDbContext.Users.Any(x => x.Email == email))
         {
-            return BadRequest(error: "This email is already in use.");
+            return BadRequest("This email is already in use.".ToErrorBody());
         }
 
         User newUser =
@@ -134,7 +134,7 @@ public sealed class AuthorizationController : ControllerBase
 
         if (addedUser == null)
         {
-            return Problem();
+            return BadRequest("Internal error.".ToErrorBody());
         }
 
         EmailVerification emailVerification =
@@ -241,7 +241,7 @@ public sealed class AuthorizationController : ControllerBase
 
         if (user is null)
         {
-            return BadRequest(error: "User with this email is not exist.");
+            return BadRequest("User with this email is not exist.".ToErrorBody());
         }
 
         EmailVerification emailVerification =
@@ -284,12 +284,12 @@ public sealed class AuthorizationController : ControllerBase
 
         if (user is null)
         {
-            return BadRequest(error: "User with this email is not exist.");
+            return BadRequest("User with this email is not exist.".ToErrorBody());
         }
 
         if (user.EmailVerification is EmailVerificationState.NotVerified)
         {
-            return BadRequest(error: "Email not verified.");
+            return BadRequest("Email not verified.".ToErrorBody());
         }
 
         PasswordRecover passwordRecover =
@@ -327,18 +327,18 @@ public sealed class AuthorizationController : ControllerBase
 
         if (!codes.Any())
         {
-            return BadRequest(error: "Invalid Access code.");
+            return BadRequest("Invalid Access code.".ToErrorBody());
         }
 
         codes = codes.Where(x => x.IsValid(tokensLifeTimeSettings.AccessCodeDuration));
 
         if (!codes.Any())
         {
-            return BadRequest(error: "Access code duration expired.");
+            return BadRequest("Access code duration expired.".ToErrorBody());
         }
         else if (codes.Count() > 1)
         {
-            return BadRequest(error: "Internal error, try again.");
+            return BadRequest("Internal error, try again.".ToErrorBody());
         }
 
         User? user = authorizationDbContext.Users.FirstOrDefault(
@@ -347,12 +347,12 @@ public sealed class AuthorizationController : ControllerBase
 
         if (user == null)
         {
-            return BadRequest(error: "Internal error, try again.");
+            return BadRequest("Internal error, try again.".ToErrorBody());
         }
 
         if (user.EmailVerification is EmailVerificationState.NotVerified)
         {
-            return BadRequest(error: "Email not verified.");
+            return BadRequest("Email not verified.".ToErrorBody());
         }
 
         user.HashedPassword = cryptographyService.DecryptString(
@@ -360,6 +360,6 @@ public sealed class AuthorizationController : ControllerBase
         );
         _ = await authorizationDbContext.SaveChangesAsync();
 
-        return Accepted("Password has been changed");
+        return Accepted();
     }
 }
