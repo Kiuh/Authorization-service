@@ -43,11 +43,7 @@ public sealed class AuthorizationController : ControllerBase
     [HttpGet("/PublicKey")]
     public IActionResult GetPublicKey()
     {
-        logger.LogInformation(
-            "Processing request {RP} at {DT}",
-            Request.Path,
-            DateTime.UtcNow.ToLongTimeString()
-        );
+        logger.LogDefaultInfo(Request);
         return Ok(cryptography.GetPublicKey());
     }
 
@@ -60,11 +56,7 @@ public sealed class AuthorizationController : ControllerBase
     [HttpPost("/Login")]
     public async Task<IActionResult> Login([FromBody] LogInData logInData)
     {
-        logger.LogInformation(
-            "Processing request {RP} at {DT}",
-            Request.Path,
-            DateTime.UtcNow.ToLongTimeString()
-        );
+        logger.LogDefaultInfo(Request);
         User? foundUser = null;
         foreach (User? user in await authorizationDbContext.Users.ToListAsync())
         {
@@ -106,11 +98,7 @@ public sealed class AuthorizationController : ControllerBase
     [HttpPut("/Registration")]
     public async Task<IActionResult> Registration([FromBody] RegistrationData registrationData)
     {
-        logger.LogInformation(
-            "Processing request {RP} at {DT}",
-            Request.Path,
-            DateTime.UtcNow.ToLongTimeString()
-        );
+        logger.LogDefaultInfo(Request);
         if (authorizationDbContext.Users.Any(x => x.Login == registrationData.Login))
         {
             return BadRequest("This login is already taken.".ToErrorBody());
@@ -180,11 +168,7 @@ public sealed class AuthorizationController : ControllerBase
     [HttpPost("/Verification")]
     public async Task<IActionResult> Verification([FromForm] string JwtToken)
     {
-        logger.LogInformation(
-            "Processing request {RP} at {DT}",
-            Request.Path,
-            DateTime.UtcNow.ToLongTimeString()
-        );
+        logger.LogDefaultInfo(Request);
         EmailVerification? emailVerification =
             await authorizationDbContext.EmailVerifications.FirstOrDefaultAsync(
                 x => x.JwtToken == JwtToken
@@ -253,11 +237,7 @@ public sealed class AuthorizationController : ControllerBase
         [FromBody] ResendVerificationData resendEmailVerificationData
     )
     {
-        logger.LogInformation(
-            "Processing request {RP} at {DT}",
-            Request.Path,
-            DateTime.UtcNow.ToLongTimeString()
-        );
+        logger.LogDefaultInfo(Request);
         string email = cryptography
             .DecryptString(resendEmailVerificationData.EncryptedNonceWithEmail)
             .Replace(resendEmailVerificationData.Nonce, "");
@@ -301,11 +281,7 @@ public sealed class AuthorizationController : ControllerBase
         [FromBody] ForgotPasswordData forgotPasswordData
     )
     {
-        logger.LogInformation(
-            "Processing request {RP} at {DT}",
-            Request.Path,
-            DateTime.UtcNow.ToLongTimeString()
-        );
+        logger.LogDefaultInfo(Request);
         string email = cryptography
             .DecryptString(forgotPasswordData.EncryptedNonceWithEmail)
             .Replace(forgotPasswordData.Nonce, "");
@@ -351,11 +327,7 @@ public sealed class AuthorizationController : ControllerBase
         [FromBody] RecoverPasswordData recoverPasswordData
     )
     {
-        logger.LogInformation(
-            "Processing request {RP} at {DT}",
-            Request.Path,
-            DateTime.UtcNow.ToLongTimeString()
-        );
+        logger.LogDefaultInfo(Request);
         IEnumerable<PasswordRecover> codes = await authorizationDbContext.PasswordRecovers
             .Where(x => x.AccessCode == recoverPasswordData.AccessCode)
             .ToListAsync();
