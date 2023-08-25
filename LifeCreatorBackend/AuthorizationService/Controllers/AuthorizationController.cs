@@ -14,33 +14,41 @@ namespace AuthorizationService.Controllers;
 public sealed class AuthorizationController : ControllerBase
 {
     private readonly AuthorizationDbContext authorizationDbContext;
-    private readonly ICryptographyService cryptographyService;
-    private readonly IMailSenderService mailService;
-    private readonly IJwtTokenToolsService jwtTokenService;
+    private readonly ICryptographyService cryptography;
+    private readonly IMailSenderService mailSender;
+    private readonly IJwtTokenToolsService jwtTokenTools;
     private readonly IMailBodyBuilder mailBodyBuilder;
-    private readonly TokensLifeTimeSettings tokensLifeTimeSettings;
+    private readonly TokensLifeTimeSettings tokensLifeTime;
+    private readonly ILogger<AuthorizationController> logger;
 
     public AuthorizationController(
         AuthorizationDbContext dbContext,
-        IMailSenderService mailService,
-        ICryptographyService cryptographyService,
-        IJwtTokenToolsService jwtTokenService,
+        IMailSenderService mailSender,
+        ICryptographyService cryptography,
+        IJwtTokenToolsService jwtTokenTools,
         IMailBodyBuilder mailBodyBuilder,
-        IOptions<TokensLifeTimeSettings> tokensLifeTimeSettings
+        IOptions<TokensLifeTimeSettings> tokensLifeTime,
+        ILogger<AuthorizationController> logger
     )
     {
         authorizationDbContext = dbContext;
-        this.mailService = mailService;
-        this.cryptographyService = cryptographyService;
-        this.jwtTokenService = jwtTokenService;
+        this.logger = logger;
+        this.mailSender = mailSender;
+        this.cryptography = cryptography;
+        this.jwtTokenTools = jwtTokenTools;
         this.mailBodyBuilder = mailBodyBuilder;
-        this.tokensLifeTimeSettings = tokensLifeTimeSettings.Value;
+        this.tokensLifeTime = tokensLifeTime.Value;
     }
 
     [HttpGet("/PublicKey")]
     public IActionResult GetPublicKey()
     {
-        return Ok(cryptographyService.GetPublicKey());
+        logger.LogInformation(
+            "Processing request {RP} at {DT}",
+            Request.Path,
+            DateTime.UtcNow.ToLongTimeString()
+        );
+        return Ok(cryptography.GetPublicKey());
     }
 
     public sealed class LogInData
@@ -52,11 +60,16 @@ public sealed class AuthorizationController : ControllerBase
     [HttpPost("/Login")]
     public async Task<IActionResult> Login([FromBody] LogInData logInData)
     {
+        logger.LogInformation(
+            "Processing request {RP} at {DT}",
+            Request.Path,
+            DateTime.UtcNow.ToLongTimeString()
+        );
         User? foundUser = null;
         foreach (User? user in await authorizationDbContext.Users.ToListAsync())
         {
             if (
-                cryptographyService.HashString(user.Login + logInData.Nonce + user.HashedPassword)
+                cryptography.HashString(user.Login + logInData.Nonce + user.HashedPassword)
                 == logInData.Signature
             )
             {
@@ -76,10 +89,7 @@ public sealed class AuthorizationController : ControllerBase
         {
             Response.Headers.Add(
                 "JwtBearerToken",
-                jwtTokenService.GenerateToken(
-                    foundUser.Login,
-                    tokensLifeTimeSettings.LoginTokenDuration
-                )
+                jwtTokenTools.GenerateToken(foundUser.Login, tokensLifeTime.LoginTokenDuration)
             );
             return Accepted();
         }
@@ -96,12 +106,17 @@ public sealed class AuthorizationController : ControllerBase
     [HttpPut("/Registration")]
     public async Task<IActionResult> Registration([FromBody] RegistrationData registrationData)
     {
+        logger.LogInformation(
+            "Processing request {RP} at {DT}",
+            Request.Path,
+            DateTime.UtcNow.ToLongTimeString()
+        );
         if (authorizationDbContext.Users.Any(x => x.Login == registrationData.Login))
         {
             return BadRequest("This login is already taken.".ToErrorBody());
         }
 
-        string email = cryptographyService
+        string email = cryptography
             .DecryptString(registrationData.EncryptedNonceWithEmail)
             .Replace(registrationData.Nonce, "");
 
@@ -119,7 +134,7 @@ public sealed class AuthorizationController : ControllerBase
             {
                 Login = registrationData.Login,
                 Email = email,
-                HashedPassword = cryptographyService.DecryptString(
+                HashedPassword = cryptography.DecryptString(
                     registrationData.EncryptedHashedPassword
                 ),
                 RegistrationDate = DateTime.UtcNow,
@@ -141,9 +156,9 @@ public sealed class AuthorizationController : ControllerBase
             new()
             {
                 User = addedUser,
-                JwtToken = jwtTokenService.GenerateToken(
+                JwtToken = jwtTokenTools.GenerateToken(
                     addedUser.Login,
-                    tokensLifeTimeSettings.EmailValidationTokenDuration
+                    tokensLifeTime.EmailValidationTokenDuration
                 ),
                 RequestDate = DateTime.UtcNow
             };
@@ -151,7 +166,7 @@ public sealed class AuthorizationController : ControllerBase
         _ = await authorizationDbContext.EmailVerifications.AddAsync(emailVerification);
         _ = await authorizationDbContext.SaveChangesAsync();
 
-        Result result = await mailService.SendAsync(
+        Result result = await mailSender.SendAsync(
             mailBodyBuilder.VerificationMail(
                 registrationData.Login,
                 email,
@@ -165,6 +180,11 @@ public sealed class AuthorizationController : ControllerBase
     [HttpPost("/Verification")]
     public async Task<IActionResult> Verification([FromForm] string JwtToken)
     {
+        logger.LogInformation(
+            "Processing request {RP} at {DT}",
+            Request.Path,
+            DateTime.UtcNow.ToLongTimeString()
+        );
         EmailVerification? emailVerification =
             await authorizationDbContext.EmailVerifications.FirstOrDefaultAsync(
                 x => x.JwtToken == JwtToken
@@ -200,7 +220,7 @@ public sealed class AuthorizationController : ControllerBase
         {
             return RedirectToPage("/AlreadyVerified");
         }
-        if (jwtTokenService.ValidateToken(JwtToken).Failure)
+        if (jwtTokenTools.ValidateToken(JwtToken).Failure)
         {
             return RedirectToPage(
                 "/ErrorPage",
@@ -215,7 +235,7 @@ public sealed class AuthorizationController : ControllerBase
         user.EmailVerification = EmailVerificationState.Verified;
         _ = await authorizationDbContext.SaveChangesAsync();
 
-        Result result = await mailService.SendAsync(
+        Result result = await mailSender.SendAsync(
             mailBodyBuilder.WelcomeMail(user.Login, user.Email)
         );
 
@@ -233,7 +253,12 @@ public sealed class AuthorizationController : ControllerBase
         [FromBody] ResendVerificationData resendEmailVerificationData
     )
     {
-        string email = cryptographyService
+        logger.LogInformation(
+            "Processing request {RP} at {DT}",
+            Request.Path,
+            DateTime.UtcNow.ToLongTimeString()
+        );
+        string email = cryptography
             .DecryptString(resendEmailVerificationData.EncryptedNonceWithEmail)
             .Replace(resendEmailVerificationData.Nonce, "");
 
@@ -248,9 +273,9 @@ public sealed class AuthorizationController : ControllerBase
             new()
             {
                 User = user,
-                JwtToken = jwtTokenService.GenerateToken(
+                JwtToken = jwtTokenTools.GenerateToken(
                     user.Login,
-                    tokensLifeTimeSettings.EmailValidationTokenDuration
+                    tokensLifeTime.EmailValidationTokenDuration
                 ),
                 RequestDate = DateTime.UtcNow
             };
@@ -258,7 +283,7 @@ public sealed class AuthorizationController : ControllerBase
         _ = authorizationDbContext.EmailVerifications.Add(emailVerification);
         _ = authorizationDbContext.SaveChanges();
 
-        Result result = await mailService.SendAsync(
+        Result result = await mailSender.SendAsync(
             mailBodyBuilder.VerificationMail(user.Login, email, emailVerification.JwtToken)
         );
 
@@ -276,7 +301,12 @@ public sealed class AuthorizationController : ControllerBase
         [FromBody] ForgotPasswordData forgotPasswordData
     )
     {
-        string email = cryptographyService
+        logger.LogInformation(
+            "Processing request {RP} at {DT}",
+            Request.Path,
+            DateTime.UtcNow.ToLongTimeString()
+        );
+        string email = cryptography
             .DecryptString(forgotPasswordData.EncryptedNonceWithEmail)
             .Replace(forgotPasswordData.Nonce, "");
 
@@ -303,7 +333,7 @@ public sealed class AuthorizationController : ControllerBase
         _ = await authorizationDbContext.PasswordRecovers.AddAsync(passwordRecover);
         _ = await authorizationDbContext.SaveChangesAsync();
 
-        Result result = await mailService.SendAsync(
+        Result result = await mailSender.SendAsync(
             mailBodyBuilder.AccessCodeMail(user.Login, email, passwordRecover.AccessCode)
         );
 
@@ -321,6 +351,11 @@ public sealed class AuthorizationController : ControllerBase
         [FromBody] RecoverPasswordData recoverPasswordData
     )
     {
+        logger.LogInformation(
+            "Processing request {RP} at {DT}",
+            Request.Path,
+            DateTime.UtcNow.ToLongTimeString()
+        );
         IEnumerable<PasswordRecover> codes = await authorizationDbContext.PasswordRecovers
             .Where(x => x.AccessCode == recoverPasswordData.AccessCode)
             .ToListAsync();
@@ -330,7 +365,7 @@ public sealed class AuthorizationController : ControllerBase
             return BadRequest("Invalid Access code.".ToErrorBody());
         }
 
-        codes = codes.Where(x => x.IsValid(tokensLifeTimeSettings.AccessCodeDuration));
+        codes = codes.Where(x => x.IsValid(tokensLifeTime.AccessCodeDuration));
 
         if (!codes.Any())
         {
@@ -355,7 +390,7 @@ public sealed class AuthorizationController : ControllerBase
             return BadRequest("Email not verified.".ToErrorBody());
         }
 
-        user.HashedPassword = cryptographyService.DecryptString(
+        user.HashedPassword = cryptography.DecryptString(
             recoverPasswordData.EncryptedHashedPassword
         );
         _ = await authorizationDbContext.SaveChangesAsync();
