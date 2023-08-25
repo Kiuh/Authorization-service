@@ -18,12 +18,12 @@ public interface ICryptographyService
     public string GetPublicKey();
 }
 
-public class CryptographyService : ICryptographyService
+public class Cryptography : ICryptographyService
 {
     private ICryptoNet cryptoNet;
     private string publicKey;
 
-    public CryptographyService(IOptions<CryptographyServiceSettings> cryptoData)
+    public Cryptography(IOptions<CryptographyServiceSettings> cryptoData)
     {
         cryptoNet = new CryptoNetRsa(cryptoData.Value.PrivateKey);
         publicKey = cryptoNet.ExportKey(false);

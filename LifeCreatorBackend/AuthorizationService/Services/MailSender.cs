@@ -6,7 +6,7 @@ using sib_api_v3_sdk.Model;
 
 namespace AuthorizationService.Services;
 
-public class MailServiceSettings
+public class MailSenderSettings
 {
     public required string ApiKey { get; set; }
     public required string SenderName { get; set; }
@@ -21,7 +21,7 @@ public class MailData
     public required string HtmlContent { get; set; }
 }
 
-public interface IMailService
+public interface IMailSenderService
 {
     public Task<Result> SendAsync(MailData mailData);
 }
@@ -29,11 +29,11 @@ public interface IMailService
 /// <summary>
 /// Visit https://app.brevo.com/ to see data about sent emails
 /// </summary>
-public class MailService : IMailService
+public class MailSender : IMailSenderService
 {
-    private readonly MailServiceSettings mailSettings;
+    private readonly MailSenderSettings mailSettings;
 
-    public MailService(IOptions<MailServiceSettings> mailSettings)
+    public MailSender(IOptions<MailSenderSettings> mailSettings)
     {
         this.mailSettings = mailSettings.Value;
     }

@@ -15,7 +15,7 @@ public class TokensLifeTimeSettings
     public required TimeSpan AccessCodeDuration { get; set; }
 }
 
-public class JwtTokenServiceSettings
+public class JwtTokenToolsSettings
 {
     public required string Issuer { get; set; }
     public required string Audience { get; set; }
@@ -36,17 +36,17 @@ public class JwtTokenServiceSettings
     }
 }
 
-public interface IJwtTokenService
+public interface IJwtTokenToolsService
 {
     public string GenerateToken(string actor, TimeSpan duration);
     public Result ValidateToken(string token);
 }
 
-public class JwtTokenService : IJwtTokenService
+public class JwtTokenTools : IJwtTokenToolsService
 {
-    private JwtTokenServiceSettings tokenSettings;
+    private JwtTokenToolsSettings tokenSettings;
 
-    public JwtTokenService(IOptions<JwtTokenServiceSettings> tokenSettings)
+    public JwtTokenTools(IOptions<JwtTokenToolsSettings> tokenSettings)
     {
         this.tokenSettings = tokenSettings.Value;
     }

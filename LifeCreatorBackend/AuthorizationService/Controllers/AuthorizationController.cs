@@ -1,8 +1,8 @@
 ﻿using AuthorizationService.Common;
 using AuthorizationService.Data;
 using AuthorizationService.Models;
+using AuthorizationService.Pages;
 using AuthorizationService.Services;
-using AuthorizationService.Views.ErrorPage;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -16,16 +16,16 @@ public sealed class AuthorizationController : ControllerBase
 {
     private readonly AuthorizationDbContext authorizationDbContext;
     private readonly ICryptographyService cryptographyService;
-    private readonly IMailService mailService;
-    private readonly IJwtTokenService jwtTokenService;
+    private readonly IMailSenderService mailService;
+    private readonly IJwtTokenToolsService jwtTokenService;
     private readonly IMailBodyBuilder mailBodyBuilder;
     private readonly TokensLifeTimeSettings tokensLifeTimeSettings;
 
     public AuthorizationController(
         AuthorizationDbContext dbContext,
-        IMailService mailService,
+        IMailSenderService mailService,
         ICryptographyService cryptographyService,
-        IJwtTokenService jwtTokenService,
+        IJwtTokenToolsService jwtTokenService,
         IMailBodyBuilder mailBodyBuilder,
         IOptions<TokensLifeTimeSettings> tokensLifeTimeSettings
     )
@@ -136,6 +136,7 @@ public sealed class AuthorizationController : ControllerBase
         Result result = await mailService.SendAsync(
             mailBodyBuilder.VerificationMail(
                 registrationData.Login,
+                "",
                 email,
                 emailVerification.JwtToken
             )
@@ -155,7 +156,15 @@ public sealed class AuthorizationController : ControllerBase
             );
         if (emailVerification is null)
         {
-            return Problem("No such email verification request.");
+            return RedirectToPage(
+                "/ErrorPage",
+                new ErrorPageInfo()
+                {
+                    StatusCode = "500",
+                    Title = "Internal Server Error",
+                    Labels = new() { $"No such email verification request." }
+                }
+            );
         }
         User? user = await authorizationDbContext.Users.FirstOrDefaultAsync(
             x => x.EmailVerifications.Contains(emailVerification)
@@ -163,25 +172,39 @@ public sealed class AuthorizationController : ControllerBase
         if (user is null)
         {
             return RedirectToPage(
-                "Page",
-                new ErrorPageInfo(
-                    "500",
-                    "Internal Server Error",
-                    "No such user with verification request."
-                ).ToJson()
+                "/ErrorPage",
+                new ErrorPageInfo()
+                {
+                    StatusCode = "500",
+                    Title = "Internal Server Error",
+                    Labels = new() { "Validation failed, try ReRegister." }
+                }
             );
         }
         if (user.EmailVerification is EmailVerificationState.Vitrificated)
         {
-            return Accepted("Your email are Already verified, you can login.");
+            return RedirectToPage("/AlreadyVerified");
         }
         if (jwtTokenService.ValidateToken(JwtToken).Failure)
         {
-            return Problem("Validation failed, try ReRegister.");
+            return RedirectToPage(
+                "/ErrorPage",
+                new ErrorPageInfo()
+                {
+                    StatusCode = "500",
+                    Title = "Internal Server Error",
+                    Labels = new() { "Validation failed, request to send email again." }
+                }
+            );
         }
         user.EmailVerification = EmailVerificationState.Vitrificated;
         _ = await authorizationDbContext.SaveChangesAsync();
-        return Ok("Successful registration.");
+
+        Result result = await mailService.SendAsync(
+            mailBodyBuilder.WelcomeMail(user.Login, user.Email)
+        );
+
+        return RedirectToPage("/SuccessVerification");
     }
 
     public sealed class ResendEmailVerificationData
@@ -221,7 +244,7 @@ public sealed class AuthorizationController : ControllerBase
         _ = authorizationDbContext.SaveChanges();
 
         Result result = await mailService.SendAsync(
-            mailBodyBuilder.VerificationMail(user.Login, email, emailVerification.JwtToken)
+            mailBodyBuilder.VerificationMail(user.Login, "", email, emailVerification.JwtToken)
         );
 
         return result.Success

@@ -1,0 +1,35 @@
+﻿@page "/ErrorPage"
+
+@namespace AuthorizationService.Pages
+@using Microsoft.AspNetCore.Mvc.RazorPages
+@model ErrorPageModel
+
+<head>
+    <title>@Model.Title</title>
+</head>
+
+<div class="container" style="text-align: center;  color: #888;">
+    <text>&nbsp;</text>
+    <h1 style="font-size: 150px; color: #888; margin-bottom: 0px;">@Model.StatusCodeNumber</h1>
+    <p style="font-size: 50px; ">@Model.Title</p>
+    @foreach (var label in Model.Labels)
+    {
+        <p>@label</p>
+    }
+</div>
+
+@functions{
+    public class ErrorPageModel: PageModel
+    {
+        public string StatusCodeNumber { get; set; } = "";
+        public string Title { get; set; } = "";
+        public List<string> Labels { get; set; } = new();
+
+        public void OnGet(ErrorPageInfo errorPageInfo)
+        {
+            StatusCodeNumber = errorPageInfo.StatusCode;
+            Title = errorPageInfo.Title;
+            Labels = errorPageInfo.Labels;
+        }
+    }
+}

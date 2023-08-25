@@ -7,28 +7,36 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddUserSecrets<Program>();
 
-string connectionStringName;
+string connectionStringSection;
+string mailBodyBuilderSettingsSection;
 
 if (builder.Environment.EnvironmentName is "DockerDevelopment" or "Production")
 {
-    connectionStringName = "AuthorizationDbContextDocker";
+    connectionStringSection = "AuthorizationDbContextDocker";
+    mailBodyBuilderSettingsSection = "MailBodyBuilderSettingsDocker";
 }
 else
 {
-    connectionStringName = builder.Environment.EnvironmentName is "DesktopDevelopment"
-        ? "AuthorizationDbContextWindows"
-        : throw new Exception("Unknown Environment");
+    if (builder.Environment.EnvironmentName is not "DesktopDevelopment")
+    {
+        throw new Exception("Unknown Environment");
+    }
+    else
+    {
+        connectionStringSection = "AuthorizationDbContextWindows";
+        mailBodyBuilderSettingsSection = "MailBodyBuilderSettingsDesktop";
+    }
 }
 
-_ = builder.Services.AddDbContext<AuthorizationDbContext>(
-    options => options.UseNpgsql(builder.Configuration.GetConnectionString(connectionStringName))
+builder.Services.AddDbContext<AuthorizationDbContext>(
+    options => options.UseNpgsql(builder.Configuration.GetConnectionString(connectionStringSection))
 );
 
-builder.Services.Configure<MailServiceSettings>(builder.Configuration.GetSection("MailSettings"));
-builder.Services.AddTransient<IMailService, MailService>();
+builder.Services.Configure<MailSenderSettings>(builder.Configuration.GetSection("MailSettings"));
+builder.Services.AddTransient<IMailSenderService, MailSender>();
 
-_ = builder.Services.AddControllers();
-_ = builder.Services.AddSwaggerGen();
+builder.Services.AddControllers();
+builder.Services.AddSwaggerGen();
 
 builder.Services.Configure<TokensLifeTimeSettings>(
     builder.Configuration.GetSection("TokensLifeTimeSettings")
@@ -38,27 +46,31 @@ IConfigurationSection jwtTokenServiceSettingsConfig = builder.Configuration.GetS
     "JwtTokenServiceSettings"
 );
 
-builder.Services.Configure<JwtTokenServiceSettings>(jwtTokenServiceSettingsConfig);
+builder.Services.Configure<JwtTokenToolsSettings>(jwtTokenServiceSettingsConfig);
 
-JwtTokenServiceSettings? jwtTokenServiceSettings =
-    jwtTokenServiceSettingsConfig.Get<JwtTokenServiceSettings>()
+JwtTokenToolsSettings? jwtTokenServiceSettings =
+    jwtTokenServiceSettingsConfig.Get<JwtTokenToolsSettings>()
     ?? throw new Exception("No JwtTokenServiceSettings");
 
-_ = builder.Services.AddTransient<IJwtTokenService, JwtTokenService>();
+builder.Services.AddTransient<IJwtTokenToolsService, JwtTokenTools>();
 
-_ = builder.Services.AddAuthorization();
-_ = builder.Services
+builder.Services.AddAuthorization();
+builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(jwtTokenServiceSettings.ConfigurateJwtBearerOptions);
 
-_ = builder.Services.AddSingleton<IDbInitializeService, DbInitializeService>();
+builder.Services.AddSingleton<IDbInitializeService, DbInitialize>();
 
 builder.Services.Configure<CryptographyServiceSettings>(
     builder.Configuration.GetSection("CryptographySettings")
 );
 
-_ = builder.Services.AddTransient<ICryptographyService, CryptographyService>();
-_ = builder.Services.AddSingleton<IMailBodyBuilder, MailBodyBuilderService>();
+builder.Services.AddTransient<ICryptographyService, Cryptography>();
+
+builder.Services.Configure<MailBodyBuilderSettings>(
+    builder.Configuration.GetSection(mailBodyBuilderSettingsSection)
+);
+builder.Services.AddTransient<IMailBodyBuilder, MailBodyBuilder>();
 
 builder.Services.AddRazorPages();
 
@@ -84,5 +96,6 @@ else if (app.Environment.EnvironmentName is "Production")
 {
     initService.MigrateDb();
 }
+app.MapRazorPages();
 
 app.Run();
