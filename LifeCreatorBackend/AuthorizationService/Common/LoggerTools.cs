@@ -6,12 +6,14 @@ public static class LoggerTools
 {
     public static string GetIPAddresses()
     {
-        return "[ "
-            + Dns.GetHostEntry(Dns.GetHostName())
-                .AddressList.Where((x, i) => i % 2 != 0)
-                .Select(x => x.ToString())
-                .Aggregate((x, y) => x + " , " + y)
-            + " ]";
+        IPAddress[] list = Dns.GetHostEntry(Dns.GetHostName()).AddressList;
+        if (list == null)
+        {
+            return "None ips";
+        }
+        IEnumerable<IPAddress> ips = list.Where((x, i) => i % 2 != 0);
+        IEnumerable<string> stringIps = ips.Select(x => x.ToString());
+        return "[ " + stringIps.Aggregate("-->", (x, y) => x + " , " + y) + " ]";
     }
 
     public static void LogDefaultInfo(this ILogger logger, HttpRequest httpRequest)

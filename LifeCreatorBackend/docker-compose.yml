@@ -14,9 +14,20 @@ services:
       - 5000:80
     volumes:
       - ./AuthorizationService/.aspnet/https:/https:ro
+      - ./AuthorizationService/Mails:/app/Mails
       - $APPDATA/Microsoft/UserSecrets/36c29860-ecc0-445b-b7aa-109d90c26842:/root/.microsoft/usersecrets/36c29860-ecc0-445b-b7aa-109d90c26842
     depends_on:
       - postgres_db
+
+  core:
+    build:
+      context: .
+      dockerfile: CoreService/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: DockerDevelopment
+      ASPNETCORE_URLS: http://+:80
+    ports:
+      - 5132:80
 
   postgres_db:
     image: postgres
@@ -25,9 +36,34 @@ services:
       POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "postgres"
       PGDATA: "/var/lib/postgresql/data/pgdata"
+    ports:
+      - 5432
     volumes:
-      - authorization_data:/var/lib/postgresql/data
+      - authorization-data:/var/lib/postgresql/data
+
+# To login in pgAdmin (alll info from othe comtainer):
+# http://localhost:5050/browser/ (master password: postgres)
+
+# HostName: postgres_db
+# Port: 5432
+# Maintenance database: LifeCreatorDb
+# Username: postgres
+# Password: postgres
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "kylturpro@gamil.com"
+      PGADMIN_DEFAULT_PASSWORD: "postgres"
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    ports:
+      - 5050:80
+    depends_on:
+      - postgres_db
 
 volumes:
-  authorization_data:
-  core_data:  
+  authorization-data:
+  pgadmin-data:
+  core-data:  

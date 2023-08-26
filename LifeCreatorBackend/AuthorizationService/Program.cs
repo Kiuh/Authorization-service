@@ -1,3 +1,4 @@
+using AuthorizationService.Controllers;
 using AuthorizationService.Data;
 using AuthorizationService.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -9,11 +10,13 @@ builder.Configuration.AddUserSecrets<Program>();
 
 string connectionStringSection;
 string mailBodyBuilderSettingsSection;
+string redirectionSettingsSection;
 
 if (builder.Environment.EnvironmentName is "DockerDevelopment" or "Production")
 {
     connectionStringSection = "AuthorizationDbContextDocker";
     mailBodyBuilderSettingsSection = "MailBodyBuilderSettingsDocker";
+    redirectionSettingsSection = "RedirectionSettingsDocker";
 }
 else
 {
@@ -25,6 +28,7 @@ else
     {
         connectionStringSection = "AuthorizationDbContextWindows";
         mailBodyBuilderSettingsSection = "MailBodyBuilderSettingsDesktop";
+        redirectionSettingsSection = "RedirectionSettingsDesktop";
     }
 }
 
@@ -35,8 +39,9 @@ builder.Services.AddDbContext<AuthorizationDbContext>(
 builder.Services.Configure<MailSenderSettings>(builder.Configuration.GetSection("MailSettings"));
 builder.Services.AddTransient<IMailSenderService, MailSender>();
 
-builder.Services.AddControllers();
 builder.Services.AddSwaggerGen();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddControllers();
 
 builder.Services.Configure<TokensLifeTimeSettings>(
     builder.Configuration.GetSection("TokensLifeTimeSettings")
@@ -70,9 +75,14 @@ builder.Services.AddTransient<ICryptographyService, Cryptography>();
 builder.Services.Configure<MailBodyBuilderSettings>(
     builder.Configuration.GetSection(mailBodyBuilderSettingsSection)
 );
+builder.Services.Configure<RedirectionSettings>(
+    builder.Configuration.GetSection(redirectionSettingsSection)
+);
 builder.Services.AddTransient<IMailBodyBuilder, MailBodyBuilder>();
 
 builder.Services.AddRazorPages();
+
+builder.Services.AddHttpClient();
 
 WebApplication app = builder.Build();
 
