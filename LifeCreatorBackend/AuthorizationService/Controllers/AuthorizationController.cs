@@ -13,13 +13,13 @@ namespace AuthorizationService.Controllers;
 [ApiController]
 public sealed class AuthorizationController : ControllerBase
 {
-    private readonly AuthorizationDbContext authorizationDbContext;
-    private readonly ICryptographyService cryptography;
-    private readonly IMailSenderService mailSender;
-    private readonly IJwtTokenToolsService jwtTokenTools;
-    private readonly IMailBodyBuilder mailBodyBuilder;
-    private readonly TokensLifeTimeSettings tokensLifeTime;
-    private readonly ILogger<AuthorizationController> logger;
+    private AuthorizationDbContext authorizationDbContext;
+    private ICryptographyService cryptography;
+    private IMailSenderService mailSender;
+    private IJwtTokenToolsService jwtTokenTools;
+    private IMailBodyBuilder mailBodyBuilder;
+    private TokensLifeTimeSettings tokensLifeTime;
+    private ILogger<AuthorizationController> logger;
 
     public AuthorizationController(
         AuthorizationDbContext dbContext,

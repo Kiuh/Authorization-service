@@ -15,10 +15,10 @@ public class RedirectionSettings
 [ApiExplorerSettings(IgnoreApi = true)]
 public class EndpointController : Controller
 {
-    private readonly IJwtTokenToolsService jwtTokenTools;
-    private readonly IHttpClientFactory httpClientFactory;
-    private readonly ILogger<EndpointController> logger;
-    private readonly RedirectionSettings redirectionInfo;
+    private IJwtTokenToolsService jwtTokenTools;
+    private IHttpClientFactory httpClientFactory;
+    private ILogger<EndpointController> logger;
+    private RedirectionSettings redirectionInfo;
 
     public EndpointController(
         IJwtTokenToolsService jwtTokenTools,
