@@ -2,7 +2,6 @@
 
 @namespace AuthorizationService.Pages
 @using Microsoft.AspNetCore.Mvc.RazorPages;
-@model AlreadyVerifiedModel
 
 <head>
     <title>Success Verified Email!</title>
@@ -14,10 +13,3 @@
     <p style="font-size: 50px; ">"You are already verify your email."</p>
     <p>You can login to life creator application.</p>
 </div>
-
-@functions {
-    public class AlreadyVerifiedModel : PageModel
-    {
-        public void OnGet() { }
-    }
-}

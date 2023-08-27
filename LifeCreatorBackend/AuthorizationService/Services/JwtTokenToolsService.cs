@@ -1,4 +1,4 @@
-﻿using AuthorizationService.Common;
+﻿using AuthorizationService.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -39,16 +39,36 @@ public class JwtTokenToolsSettings
 public interface IJwtTokenToolsService
 {
     public string GenerateToken(string actor, TimeSpan duration);
-    public Result ValidateToken(string token);
+    public void SetLoginJwtTokenHeader(User user, IHeaderDictionary header);
+    public EmailVerification CreateEmailVerification(User user);
+    public bool ValidateToken(string token);
 }
 
-public class JwtTokenTools : IJwtTokenToolsService
+public class JwtTokenToolsService : IJwtTokenToolsService
 {
     private JwtTokenToolsSettings tokenSettings;
+    private TokensLifeTimeSettings tokensLifeTimeSettings;
 
-    public JwtTokenTools(IOptions<JwtTokenToolsSettings> tokenSettings)
+    public JwtTokenToolsService(
+        IOptions<JwtTokenToolsSettings> tokenSettings,
+        IOptions<TokensLifeTimeSettings> tokensLifeTimeSettings
+    )
     {
         this.tokenSettings = tokenSettings.Value;
+        this.tokensLifeTimeSettings = tokensLifeTimeSettings.Value;
+    }
+
+    public EmailVerification CreateEmailVerification(User user)
+    {
+        return new()
+        {
+            User = user,
+            JwtToken = GenerateToken(
+                user.Login,
+                tokensLifeTimeSettings.EmailValidationTokenDuration
+            ),
+            RequestDate = DateTime.UtcNow
+        };
     }
 
     public string GenerateToken(string actor, TimeSpan duration)
@@ -68,11 +88,19 @@ public class JwtTokenTools : IJwtTokenToolsService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public Result ValidateToken(string token)
+    public void SetLoginJwtTokenHeader(User user, IHeaderDictionary header)
+    {
+        header.Add(
+            "JwtBearerToken",
+            GenerateToken(user.Login, tokensLifeTimeSettings.LoginTokenDuration)
+        );
+    }
+
+    public bool ValidateToken(string token)
     {
         if (token == null)
         {
-            return new FailResult("Null token");
+            return false;
         }
 
         JwtSecurityTokenHandler tokenHandler = new();
@@ -92,11 +120,11 @@ public class JwtTokenTools : IJwtTokenToolsService
                 },
                 out _
             );
-            return new SuccessResult();
+            return true;
         }
-        catch (Exception ex)
+        catch
         {
-            return new FailResult(ex.Message);
+            return false;
         }
     }
 }

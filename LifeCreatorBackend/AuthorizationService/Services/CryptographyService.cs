@@ -18,12 +18,12 @@ public interface ICryptographyService
     public string GetPublicKey();
 }
 
-public class Cryptography : ICryptographyService
+public class CryptographyService : ICryptographyService
 {
     private ICryptoNet cryptoNet;
     private string publicKey;
 
-    public Cryptography(IOptions<CryptographyServiceSettings> cryptoData)
+    public CryptographyService(IOptions<CryptographyServiceSettings> cryptoData)
     {
         cryptoNet = new CryptoNetRsa(cryptoData.Value.PrivateKey);
         publicKey = cryptoNet.ExportKey(false);
@@ -31,8 +31,10 @@ public class Cryptography : ICryptographyService
 
     public string DecryptString(string input)
     {
-        byte[] bytes = Convert.FromBase64String(input);
-        byte[] encrypted = cryptoNet.DecryptToBytes(bytes);
+        Span<byte> bytes = new();
+        byte[] encrypted = Convert.TryFromBase64Chars(input.AsSpan(), bytes, out _)
+            ? cryptoNet.DecryptToBytes(bytes.ToArray())
+            : throw new Exception("Incorrect input for Decrypting");
         return Encoding.UTF8.GetString(encrypted);
     }
 
@@ -49,8 +51,7 @@ public class Cryptography : ICryptographyService
 
     public string HashString(string input)
     {
-        using SHA256 sha256Hash = SHA256.Create();
-        byte[] hashedBytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(input));
+        byte[] hashedBytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
         StringBuilder sBuilder = new();
         for (int i = 0; i < hashedBytes.Length; i++)
         {

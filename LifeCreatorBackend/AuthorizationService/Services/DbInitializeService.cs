@@ -8,11 +8,11 @@ public interface IDbInitializeService
     public void MigrateDb();
 }
 
-public class DbInitialize : IDbInitializeService
+public class DbInitializeService : IDbInitializeService
 {
     private readonly AuthorizationDbContext authorizationDbContext;
 
-    public DbInitialize(AuthorizationDbContext dbContext)
+    public DbInitializeService(AuthorizationDbContext dbContext)
     {
         authorizationDbContext = dbContext;
     }

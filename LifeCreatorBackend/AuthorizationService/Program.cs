@@ -1,6 +1,9 @@
 using AuthorizationService.Controllers;
 using AuthorizationService.Data;
+using AuthorizationService.Middleware;
 using AuthorizationService.Services;
+using AuthorizationService.Services.Mail;
+using AuthorizationService.Services.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 
@@ -36,8 +39,12 @@ builder.Services.AddDbContext<AuthorizationDbContext>(
     options => options.UseNpgsql(builder.Configuration.GetConnectionString(connectionStringSection))
 );
 
+builder.Services.AddTransient<IUsersService, UsersService>();
+builder.Services.AddTransient<IEmailVerificationsService, EmailVerificationsService>();
+builder.Services.AddTransient<IPasswordRecoversService, PasswordRecoversService>();
+
 builder.Services.Configure<MailSenderSettings>(builder.Configuration.GetSection("MailSettings"));
-builder.Services.AddTransient<IMailSenderService, MailSender>();
+builder.Services.AddTransient<IMailSenderService, MailSenderService>();
 
 builder.Services.AddSwaggerGen();
 builder.Services.AddEndpointsApiExplorer();
@@ -57,20 +64,20 @@ JwtTokenToolsSettings? jwtTokenServiceSettings =
     jwtTokenServiceSettingsConfig.Get<JwtTokenToolsSettings>()
     ?? throw new Exception("No JwtTokenServiceSettings");
 
-builder.Services.AddTransient<IJwtTokenToolsService, JwtTokenTools>();
+builder.Services.AddTransient<IJwtTokenToolsService, JwtTokenToolsService>();
 
 builder.Services.AddAuthorization();
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(jwtTokenServiceSettings.ConfigurateJwtBearerOptions);
 
-builder.Services.AddSingleton<IDbInitializeService, DbInitialize>();
+builder.Services.AddSingleton<IDbInitializeService, DbInitializeService>();
 
 builder.Services.Configure<CryptographyServiceSettings>(
     builder.Configuration.GetSection("CryptographySettings")
 );
 
-builder.Services.AddTransient<ICryptographyService, Cryptography>();
+builder.Services.AddTransient<ICryptographyService, CryptographyService>();
 
 builder.Services.Configure<MailBodyBuilderSettings>(
     builder.Configuration.GetSection(mailBodyBuilderSettingsSection)
@@ -78,13 +85,15 @@ builder.Services.Configure<MailBodyBuilderSettings>(
 builder.Services.Configure<RedirectionSettings>(
     builder.Configuration.GetSection(redirectionSettingsSection)
 );
-builder.Services.AddTransient<IMailBodyBuilder, MailBodyBuilder>();
+builder.Services.AddTransient<IMailBodyBuilder, MailBodyBuilderService>();
 
 builder.Services.AddRazorPages();
 
 builder.Services.AddHttpClient();
 
 WebApplication app = builder.Build();
+
+app.UseMiddleware<ErrorHandlingMiddleware>();
 
 if (app.Environment.EnvironmentName is "DockerDevelopment" or "DesktopDevelopment")
 {
@@ -96,6 +105,7 @@ _ = app.UseAuthentication();
 _ = app.UseAuthorization();
 
 _ = app.MapControllers();
+_ = app.MapRazorPages();
 
 IDbInitializeService initService = app.Services.GetRequiredService<IDbInitializeService>();
 if (app.Environment.EnvironmentName is "DockerDevelopment" or "DesktopDevelopment")
@@ -106,6 +116,5 @@ else if (app.Environment.EnvironmentName is "Production")
 {
     initService.MigrateDb();
 }
-app.MapRazorPages();
 
 app.Run();

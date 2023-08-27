@@ -1,10 +1,9 @@
-﻿using AuthorizationService.Common;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 using sib_api_v3_sdk.Api;
 using sib_api_v3_sdk.Client;
 using sib_api_v3_sdk.Model;
 
-namespace AuthorizationService.Services;
+namespace AuthorizationService.Services.Mail;
 
 public class MailSenderSettings
 {
@@ -23,22 +22,22 @@ public class MailData
 
 public interface IMailSenderService
 {
-    public Task<Result> SendAsync(MailData mailData);
+    public System.Threading.Tasks.Task SendAsync(MailData mailData);
 }
 
 /// <summary>
 /// Visit https://app.brevo.com/ to see data about sent emails
 /// </summary>
-public class MailSender : IMailSenderService
+public class MailSenderService : IMailSenderService
 {
     private readonly MailSenderSettings mailSettings;
 
-    public MailSender(IOptions<MailSenderSettings> mailSettings)
+    public MailSenderService(IOptions<MailSenderSettings> mailSettings)
     {
         this.mailSettings = mailSettings.Value;
     }
 
-    public async Task<Result> SendAsync(MailData mailData)
+    public async System.Threading.Tasks.Task SendAsync(MailData mailData)
     {
         TransactionalEmailsApi api = new();
         api.Configuration.AddApiKey("api-key", mailSettings.ApiKey);
@@ -62,11 +61,10 @@ public class MailSender : IMailSenderService
                 email
             );
 
-            return new SuccessResult();
         }
-        catch (Exception e)
+        catch
         {
-            return new FailResult(e.Message);
+            throw new Exception("Fail to send mail.");
         }
     }
 }

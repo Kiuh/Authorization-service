@@ -2,7 +2,6 @@
 
 @namespace AuthorizationService.Pages
 @using Microsoft.AspNetCore.Mvc.RazorPages;
-@model SuccessVerificationModel
 
 <head>
     <title>Success Verified Email!</title>
@@ -14,10 +13,3 @@
     <p style="font-size: 50px; ">"You are successfully verify your email."</p>
     <p>Now you can login to life creator application.</p>
 </div>
-
-@functions {
-    public class SuccessVerificationModel : PageModel
-    {
-        public void OnGet() { }
-    }
-}

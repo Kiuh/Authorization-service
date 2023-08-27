@@ -1,372 +1,194 @@
 ﻿using AuthorizationService.Common;
-using AuthorizationService.Data;
+using AuthorizationService.Dto;
 using AuthorizationService.Models;
-using AuthorizationService.Pages;
 using AuthorizationService.Services;
+using AuthorizationService.Services.Mail;
+using AuthorizationService.Services.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using System.ComponentModel.DataAnnotations;
 
 namespace AuthorizationService.Controllers;
 
 [ApiController]
 public sealed class AuthorizationController : ControllerBase
 {
-    private AuthorizationDbContext authorizationDbContext;
-    private ICryptographyService cryptography;
-    private IMailSenderService mailSender;
-    private IJwtTokenToolsService jwtTokenTools;
-    private IMailBodyBuilder mailBodyBuilder;
-    private TokensLifeTimeSettings tokensLifeTime;
-    private ILogger<AuthorizationController> logger;
+    private readonly IMailSenderService mailSenderService;
+    private readonly IJwtTokenToolsService jwtTokenToolsService;
+    private readonly IMailBodyBuilder mailBodyBuilderService;
+    private readonly ILogger<AuthorizationController> logger;
+    private readonly IUsersService usersService;
+    private readonly IEmailVerificationsService emailVerificationsService;
+    private readonly IPasswordRecoversService passwordRecoversService;
 
     public AuthorizationController(
-        AuthorizationDbContext dbContext,
-        IMailSenderService mailSender,
-        ICryptographyService cryptography,
-        IJwtTokenToolsService jwtTokenTools,
-        IMailBodyBuilder mailBodyBuilder,
-        IOptions<TokensLifeTimeSettings> tokensLifeTime,
-        ILogger<AuthorizationController> logger
+        IMailSenderService mailSenderService,
+        IJwtTokenToolsService jwtTokenToolsService,
+        IMailBodyBuilder mailBodyBuilderService,
+        ILogger<AuthorizationController> logger,
+        IUsersService usersService,
+        IEmailVerificationsService emailVerificationsService,
+        IPasswordRecoversService passwordRecoversService
     )
     {
-        authorizationDbContext = dbContext;
         this.logger = logger;
-        this.mailSender = mailSender;
-        this.cryptography = cryptography;
-        this.jwtTokenTools = jwtTokenTools;
-        this.mailBodyBuilder = mailBodyBuilder;
-        this.tokensLifeTime = tokensLifeTime.Value;
-    }
-
-    [HttpGet("/PublicKey")]
-    public IActionResult GetPublicKey()
-    {
-        logger.LogDefaultInfo(Request);
-        return Ok(cryptography.GetPublicKey());
-    }
-
-    public sealed class LogInData
-    {
-        public required string Signature { get; set; }
-        public required string Nonce { get; set; }
+        this.mailSenderService = mailSenderService;
+        this.jwtTokenToolsService = jwtTokenToolsService;
+        this.mailBodyBuilderService = mailBodyBuilderService;
+        this.usersService = usersService;
+        this.emailVerificationsService = emailVerificationsService;
+        this.passwordRecoversService = passwordRecoversService;
     }
 
     [HttpPost("/Login")]
-    public async Task<IActionResult> Login([FromBody] LogInData logInData)
+    public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
     {
         logger.LogDefaultInfo(Request);
-        User? foundUser = null;
-        foreach (User? user in await authorizationDbContext.Users.ToListAsync())
-        {
-            if (
-                cryptography.HashString(user.Login + logInData.Nonce + user.HashedPassword)
-                == logInData.Signature
-            )
-            {
-                foundUser = user;
-                break;
-            }
-        }
-        if (foundUser is null)
-        {
-            return BadRequest("Invalid login or password.".ToErrorBody());
-        }
-        else if (foundUser.EmailVerification is EmailVerificationState.NotVerified)
-        {
-            return BadRequest("Email not verified.".ToErrorBody());
-        }
-        else
-        {
-            Response.Headers.Add(
-                "JwtBearerToken",
-                jwtTokenTools.GenerateToken(foundUser.Login, tokensLifeTime.LoginTokenDuration)
-            );
-            return Accepted();
-        }
-    }
+        User user = await usersService.FindUserBySignatureAndNonce(
+            loginDto.Signature,
+            loginDto.Nonce
+        );
 
-    public sealed class RegistrationData
-    {
-        public required string Login { get; set; }
-        public required string EncryptedNonceWithEmail { get; set; }
-        public required string Nonce { get; set; }
-        public required string EncryptedHashedPassword { get; set; }
+        if (user.EmailVerification is EmailVerificationState.NotVerified)
+        {
+            throw new Exception("Email not verified.");
+        }
+
+        jwtTokenToolsService.SetLoginJwtTokenHeader(user, Response.Headers);
+        return Ok();
     }
 
     [HttpPut("/Registration")]
-    public async Task<IActionResult> Registration([FromBody] RegistrationData registrationData)
+    public async Task<IActionResult> Registration([FromBody] RegistrationDto registrationDto)
     {
         logger.LogDefaultInfo(Request);
-        if (authorizationDbContext.Users.Any(x => x.Login == registrationData.Login))
-        {
-            return BadRequest("This login is already taken.".ToErrorBody());
-        }
 
-        string email = cryptography
-            .DecryptString(registrationData.EncryptedNonceWithEmail)
-            .Replace(registrationData.Nonce, "");
+        User user = usersService.CreateUserFromRegistration(registrationDto);
 
-        if (!new EmailAddressAttribute().IsValid(email))
-        {
-            return BadRequest("Invalid email.".ToErrorBody());
-        }
-        if (authorizationDbContext.Users.Any(x => x.Email == email))
-        {
-            return BadRequest("This email is already in use.".ToErrorBody());
-        }
+        await usersService.AddNewUser(user);
 
-        User newUser =
-            new()
-            {
-                Login = registrationData.Login,
-                Email = email,
-                HashedPassword = cryptography.DecryptString(
-                    registrationData.EncryptedHashedPassword
-                ),
-                RegistrationDate = DateTime.UtcNow,
-                EmailVerification = EmailVerificationState.NotVerified
-            };
-        _ = await authorizationDbContext.Users.AddAsync(newUser);
-        _ = await authorizationDbContext.SaveChangesAsync();
+        EmailVerification emailVerification = jwtTokenToolsService.CreateEmailVerification(user);
 
-        User? addedUser = await authorizationDbContext.Users.FirstOrDefaultAsync(
-            x => x.Login == newUser.Login
+        await emailVerificationsService.AddEmailVerification(emailVerification);
+
+        await mailSenderService.SendAsync(
+            mailBodyBuilderService.CreateVerificationMail(emailVerification)
         );
 
-        if (addedUser == null)
-        {
-            return BadRequest("Internal error.".ToErrorBody());
-        }
-
-        EmailVerification emailVerification =
-            new()
-            {
-                User = addedUser,
-                JwtToken = jwtTokenTools.GenerateToken(
-                    addedUser.Login,
-                    tokensLifeTime.EmailValidationTokenDuration
-                ),
-                RequestDate = DateTime.UtcNow
-            };
-
-        _ = await authorizationDbContext.EmailVerifications.AddAsync(emailVerification);
-        _ = await authorizationDbContext.SaveChangesAsync();
-
-        Result result = await mailSender.SendAsync(
-            mailBodyBuilder.VerificationMail(
-                registrationData.Login,
-                email,
-                emailVerification.JwtToken
-            )
-        );
-
-        return result.Success ? Ok() : Problem();
+        return Ok();
     }
 
     [HttpPost("/Verification")]
     public async Task<IActionResult> Verification([FromForm] string JwtToken)
     {
         logger.LogDefaultInfo(Request);
-        EmailVerification? emailVerification =
-            await authorizationDbContext.EmailVerifications.FirstOrDefaultAsync(
-                x => x.JwtToken == JwtToken
-            );
-        if (emailVerification is null)
+
+        EmailVerification emailVerification;
+        try
         {
-            return RedirectToPage(
-                "/ErrorPage",
-                new ErrorPageInfo()
-                {
-                    StatusCode = "500",
-                    Title = "Internal Server Error",
-                    Labels = new() { $"No such email verification request." }
-                }
+            emailVerification = await emailVerificationsService.FindEmailVerificationByJwtToken(
+                JwtToken
             );
         }
-        User? user = await authorizationDbContext.Users.FirstOrDefaultAsync(
-            x => x.EmailVerifications.Contains(emailVerification)
-        );
-        if (user is null)
+        catch (Exception ex)
         {
-            return RedirectToPage(
-                "/ErrorPage",
-                new ErrorPageInfo()
-                {
-                    StatusCode = "500",
-                    Title = "Internal Server Error",
-                    Labels = new() { "Validation failed, try ReRegister." }
-                }
-            );
+            return RedirectToPage("/ErrorPage", new ErrorPageDto(ex.Message));
         }
+
+        User user;
+        try
+        {
+            user = await usersService.FindUserByEmailVerification(emailVerification);
+        }
+        catch (Exception ex)
+        {
+            return RedirectToPage("/ErrorPage", new ErrorPageDto(ex.Message));
+        }
+
         if (user.EmailVerification is EmailVerificationState.Verified)
         {
             return RedirectToPage("/AlreadyVerified");
         }
-        if (jwtTokenTools.ValidateToken(JwtToken).Failure)
+        if (jwtTokenToolsService.ValidateToken(JwtToken))
         {
             return RedirectToPage(
                 "/ErrorPage",
-                new ErrorPageInfo()
-                {
-                    StatusCode = "500",
-                    Title = "Internal Server Error",
-                    Labels = new() { "Validation failed, request to send email again." }
-                }
+                new ErrorPageDto("Validation failed, request to send email again.")
             );
         }
-        user.EmailVerification = EmailVerificationState.Verified;
-        _ = await authorizationDbContext.SaveChangesAsync();
 
-        Result result = await mailSender.SendAsync(
-            mailBodyBuilder.WelcomeMail(user.Login, user.Email)
-        );
+        await emailVerificationsService.VerifyUserEmail(user);
+
+        await mailSenderService.SendAsync(mailBodyBuilderService.CreateWelcomeMail(user));
 
         return RedirectToPage("/SuccessVerification");
     }
 
-    public sealed class ResendVerificationData
-    {
-        public required string EncryptedNonceWithEmail { get; set; }
-        public required string Nonce { get; set; }
-    }
-
     [HttpPost("/ResendRegistration")]
     public async Task<IActionResult> ResendVerification(
-        [FromBody] ResendVerificationData resendEmailVerificationData
+        [FromBody] ResendVerificationDto resendEmailVerificationDto
     )
     {
         logger.LogDefaultInfo(Request);
-        string email = cryptography
-            .DecryptString(resendEmailVerificationData.EncryptedNonceWithEmail)
-            .Replace(resendEmailVerificationData.Nonce, "");
 
-        User? user = await authorizationDbContext.Users.FirstOrDefaultAsync(x => x.Email == email);
-
-        if (user is null)
-        {
-            return BadRequest("User with this email is not exist.".ToErrorBody());
-        }
-
-        EmailVerification emailVerification =
-            new()
-            {
-                User = user,
-                JwtToken = jwtTokenTools.GenerateToken(
-                    user.Login,
-                    tokensLifeTime.EmailValidationTokenDuration
-                ),
-                RequestDate = DateTime.UtcNow
-            };
-
-        _ = authorizationDbContext.EmailVerifications.Add(emailVerification);
-        _ = authorizationDbContext.SaveChanges();
-
-        Result result = await mailSender.SendAsync(
-            mailBodyBuilder.VerificationMail(user.Login, email, emailVerification.JwtToken)
+        User user = await usersService.FindUserByEncryptedNonceWithEmail(
+            resendEmailVerificationDto.EncryptedNonceWithEmail,
+            resendEmailVerificationDto.Nonce
         );
 
-        return result.Success ? Ok() : Problem();
-    }
+        EmailVerification emailVerification = jwtTokenToolsService.CreateEmailVerification(user);
 
-    public sealed class ForgotPasswordData
-    {
-        public required string EncryptedNonceWithEmail { get; set; }
-        public required string Nonce { get; set; }
+        await emailVerificationsService.AddEmailVerification(emailVerification);
+
+        await mailSenderService.SendAsync(
+            mailBodyBuilderService.CreateVerificationMail(emailVerification)
+        );
+
+        return Ok();
     }
 
     [HttpPost("/ForgotPassword")]
-    public async Task<IActionResult> ForgotPassword(
-        [FromBody] ForgotPasswordData forgotPasswordData
-    )
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto forgotPasswordDto)
     {
         logger.LogDefaultInfo(Request);
-        string email = cryptography
-            .DecryptString(forgotPasswordData.EncryptedNonceWithEmail)
-            .Replace(forgotPasswordData.Nonce, "");
 
-        User? user = await authorizationDbContext.Users.FirstOrDefaultAsync(x => x.Email == email);
-
-        if (user is null)
-        {
-            return BadRequest("User with this email is not exist.".ToErrorBody());
-        }
+        User user = await usersService.FindUserByEncryptedNonceWithEmail(
+            forgotPasswordDto.EncryptedNonceWithEmail,
+            forgotPasswordDto.Nonce
+        );
 
         if (user.EmailVerification is EmailVerificationState.NotVerified)
         {
-            return BadRequest("Email not verified.".ToErrorBody());
+            throw new Exception("Email not verified.");
         }
 
-        PasswordRecover passwordRecover =
-            new()
-            {
-                User = user,
-                AccessCode = new Random().Next(100001, 999999),
-                RequestDate = DateTime.UtcNow
-            };
+        PasswordRecover passwordRecover = passwordRecoversService.CreatePasswordRecover(user);
 
-        _ = await authorizationDbContext.PasswordRecovers.AddAsync(passwordRecover);
-        _ = await authorizationDbContext.SaveChangesAsync();
+        await passwordRecoversService.AddPasswordRecover(passwordRecover);
 
-        Result result = await mailSender.SendAsync(
-            mailBodyBuilder.AccessCodeMail(user.Login, email, passwordRecover.AccessCode)
+        await mailSenderService.SendAsync(
+            mailBodyBuilderService.CreateAccessCodeMail(user, passwordRecover.AccessCode)
         );
 
-        return result.Success ? Ok() : Problem();
-    }
-
-    public sealed class RecoverPasswordData
-    {
-        public required int AccessCode { get; set; }
-        public required string EncryptedHashedPassword { get; set; }
+        return Ok();
     }
 
     [HttpPost("/RecoverPassword")]
     public async Task<IActionResult> RecoverPassword(
-        [FromBody] RecoverPasswordData recoverPasswordData
+        [FromBody] RecoverPasswordDto recoverPasswordDto
     )
     {
         logger.LogDefaultInfo(Request);
-        IEnumerable<PasswordRecover> codes = await authorizationDbContext.PasswordRecovers
-            .Where(x => x.AccessCode == recoverPasswordData.AccessCode)
-            .ToListAsync();
 
-        if (!codes.Any())
-        {
-            return BadRequest("Invalid Access code.".ToErrorBody());
-        }
-
-        codes = codes.Where(x => x.IsValid(tokensLifeTime.AccessCodeDuration));
-
-        if (!codes.Any())
-        {
-            return BadRequest("Access code duration expired.".ToErrorBody());
-        }
-        else if (codes.Count() > 1)
-        {
-            return BadRequest("Internal error, try again.".ToErrorBody());
-        }
-
-        User? user = authorizationDbContext.Users.FirstOrDefault(
-            x => x.PasswordRecovers.Contains(codes.First())
+        User user = await passwordRecoversService.FindUserWithValidAccessCode(
+            recoverPasswordDto.AccessCode
         );
-
-        if (user == null)
-        {
-            return BadRequest("Internal error, try again.".ToErrorBody());
-        }
 
         if (user.EmailVerification is EmailVerificationState.NotVerified)
         {
-            return BadRequest("Email not verified.".ToErrorBody());
+            throw new Exception("Email not verified.");
         }
 
-        user.HashedPassword = cryptography.DecryptString(
-            recoverPasswordData.EncryptedHashedPassword
-        );
-        _ = await authorizationDbContext.SaveChangesAsync();
+        await usersService.SetNewUserPassword(user, recoverPasswordDto.EncryptedHashedPassword);
 
-        return Accepted();
+        return Ok();
     }
 }

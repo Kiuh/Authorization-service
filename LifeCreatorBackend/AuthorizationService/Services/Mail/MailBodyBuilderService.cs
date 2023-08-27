@@ -1,6 +1,7 @@
-﻿using Microsoft.Extensions.Options;
+﻿using AuthorizationService.Models;
+using Microsoft.Extensions.Options;
 
-namespace AuthorizationService.Services;
+namespace AuthorizationService.Services.Mail;
 
 public class MailBodyBuilderSettings
 {
@@ -9,19 +10,19 @@ public class MailBodyBuilderSettings
 
 public interface IMailBodyBuilder
 {
-    public MailData WelcomeMail(string login, string email);
-    public MailData VerificationMail(string login, string email, string jwtToken);
-    public MailData AccessCodeMail(string login, string email, int accessCode);
+    public MailData CreateWelcomeMail(User user);
+    public MailData CreateVerificationMail(EmailVerification emailVerification);
+    public MailData CreateAccessCodeMail(User user, int accessCode);
 }
 
-public class MailBodyBuilder : IMailBodyBuilder
+public class MailBodyBuilderService : IMailBodyBuilder
 {
     private string welcomeMailTemplate;
     private string verificationMailTemplate;
     private string accessCodeMailTemplate;
     private string verificationLink;
 
-    public MailBodyBuilder(IOptions<MailBodyBuilderSettings> mailBodyBuilderSettings)
+    public MailBodyBuilderService(IOptions<MailBodyBuilderSettings> mailBodyBuilderSettings)
     {
         string basePath = "./Mails/";
         welcomeMailTemplate = File.ReadAllText(basePath + "Welcome.html");
@@ -30,31 +31,31 @@ public class MailBodyBuilder : IMailBodyBuilder
         verificationLink = mailBodyBuilderSettings.Value.VerificationLink;
     }
 
-    public MailData WelcomeMail(string login, string email)
+    public MailData CreateWelcomeMail(User user)
     {
         return new MailData()
         {
-            ReceiverName = login,
-            ReceiverEmail = email,
+            ReceiverName = user.Login,
+            ReceiverEmail = user.Email,
             Subject = "Welcome to Life Creator!",
             HtmlContent = welcomeMailTemplate
         };
     }
 
-    public MailData VerificationMail(string login, string email, string jwtToken)
+    public MailData CreateVerificationMail(EmailVerification emailVerification)
     {
-        string htmlContent = verificationMailTemplate.Replace("|--JWTTOKEN--|", jwtToken);
+        string htmlContent = verificationMailTemplate.Replace("|--JWTTOKEN--|", emailVerification.JwtToken);
         htmlContent = htmlContent.Replace("|--LINK--|", verificationLink);
         return new MailData()
         {
-            ReceiverName = login,
-            ReceiverEmail = email,
+            ReceiverName = emailVerification.User.Login,
+            ReceiverEmail = emailVerification.User.Email,
             Subject = "Verify your email!",
             HtmlContent = htmlContent
         };
     }
 
-    public MailData AccessCodeMail(string login, string email, int accessCode)
+    public MailData CreateAccessCodeMail(User user, int accessCode)
     {
         string htmlContent = accessCodeMailTemplate.Replace(
             "|--ACCESSCODE--|",
@@ -62,8 +63,8 @@ public class MailBodyBuilder : IMailBodyBuilder
         );
         return new MailData()
         {
-            ReceiverName = login,
-            ReceiverEmail = email,
+            ReceiverName = user.Login,
+            ReceiverEmail = user.Email,
             Subject = "Access code for Password!",
             HtmlContent = htmlContent
         };

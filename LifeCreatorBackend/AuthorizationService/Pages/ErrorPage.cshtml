@@ -2,6 +2,7 @@
 
 @namespace AuthorizationService.Pages
 @using Microsoft.AspNetCore.Mvc.RazorPages
+@using AuthorizationService.Dto
 @model ErrorPageModel
 
 <head>
@@ -25,11 +26,11 @@
         public string Title { get; set; } = "";
         public List<string> Labels { get; set; } = new();
 
-        public void OnGet(ErrorPageInfo errorPageInfo)
+        public void OnGet(ErrorPageDto errorPageDto)
         {
-            StatusCodeNumber = errorPageInfo.StatusCode;
-            Title = errorPageInfo.Title;
-            Labels = errorPageInfo.Labels;
+            StatusCodeNumber = errorPageDto.StatusCode;
+            Title = errorPageDto.Title;
+            Labels = errorPageDto.Labels;
         }
     }
 }
