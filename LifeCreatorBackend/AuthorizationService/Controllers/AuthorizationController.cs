@@ -49,7 +49,7 @@ public sealed class AuthorizationController : ControllerBase
 
         if (user.EmailVerification is EmailVerificationState.NotVerified)
         {
-            throw new Exception("Email not verified.");
+            throw new ApiException(400, "Email not verified.");
         }
 
         jwtTokenToolsService.SetLoginJwtTokenHeader(user, Response.Headers);
@@ -157,7 +157,7 @@ public sealed class AuthorizationController : ControllerBase
 
         if (user.EmailVerification is EmailVerificationState.NotVerified)
         {
-            throw new Exception("Email not verified.");
+            throw new ApiException(400, "Email not verified.");
         }
 
         PasswordRecover passwordRecover = passwordRecoversService.CreatePasswordRecover(user);
@@ -184,7 +184,7 @@ public sealed class AuthorizationController : ControllerBase
 
         if (user.EmailVerification is EmailVerificationState.NotVerified)
         {
-            throw new Exception("Email not verified.");
+            throw new ApiException(400, "Email not verified.");
         }
 
         await usersService.SetNewUserPassword(user, recoverPasswordDto.EncryptedHashedPassword);

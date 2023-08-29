@@ -1,4 +1,5 @@
-﻿using AuthorizationService.Data;
+﻿using AuthorizationService.Common;
+using AuthorizationService.Data;
 using AuthorizationService.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -51,23 +52,23 @@ public class PasswordRecoversService : IPasswordRecoversService
 
         if (!codes.Any())
         {
-            throw new Exception("No such Access code.");
+            throw new ApiException(404, "No such Access code.");
         }
 
         codes = codes.Where(IsValidPasswordRecover);
 
         if (!codes.Any())
         {
-            throw new Exception("Access code duration expired.");
+            throw new ApiException(400, "Access code duration expired.");
         }
         else if (codes.Count() > 1)
         {
-            throw new Exception("Internal error, try again.");
+            throw new ApiException(500, "Internal error, try again.");
         }
 
         return authorizationDbContext.Users.FirstOrDefault(
                 x => x.PasswordRecovers.Contains(codes.First())
-            ) ?? throw new Exception("Internal error, try again.");
+            ) ?? throw new ApiException(500, "Internal error, try again.");
     }
 
     public bool IsValidPasswordRecover(PasswordRecover passwordRecover)

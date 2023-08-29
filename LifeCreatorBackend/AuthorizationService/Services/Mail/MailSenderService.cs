@@ -64,7 +64,7 @@ public class MailSenderService : IMailSenderService
         }
         catch
         {
-            throw new Exception("Fail to send mail.");
+            throw new ApiException(500, "Fail to send mail.");
         }
     }
 }

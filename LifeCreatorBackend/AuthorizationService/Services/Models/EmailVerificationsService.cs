@@ -1,4 +1,5 @@
-﻿using AuthorizationService.Data;
+﻿using AuthorizationService.Common;
+using AuthorizationService.Data;
 using AuthorizationService.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,12 +33,9 @@ public class EmailVerificationsService : IEmailVerificationsService
             await authorizationDbContext.EmailVerifications.FirstOrDefaultAsync(
                 x => x.JwtToken == jwtToken
             );
-        if (emailVerification is null)
-        {
-            throw new Exception("No such email verification request.");
-            ;
-        }
-        return emailVerification;
+        return emailVerification is null
+            ? throw new ApiException(404, "No such email verification request.")
+            : emailVerification;
     }
 
     public async Task VerifyUserEmail(User user)

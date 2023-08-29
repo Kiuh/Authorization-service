@@ -31,10 +31,8 @@ public class CryptographyService : ICryptographyService
 
     public string DecryptString(string input)
     {
-        Span<byte> bytes = new();
-        byte[] encrypted = Convert.TryFromBase64Chars(input.AsSpan(), bytes, out _)
-            ? cryptoNet.DecryptToBytes(bytes.ToArray())
-            : throw new Exception("Incorrect input for Decrypting");
+        byte[] bytes = Convert.FromBase64String(input);
+        byte[] encrypted = cryptoNet.DecryptToBytes(bytes.ToArray());
         return Encoding.UTF8.GetString(encrypted);
     }
 

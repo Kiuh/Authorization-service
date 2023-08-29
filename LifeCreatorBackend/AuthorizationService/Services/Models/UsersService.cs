@@ -1,4 +1,5 @@
-﻿using AuthorizationService.Data;
+﻿using AuthorizationService.Common;
+using AuthorizationService.Data;
 using AuthorizationService.Dto;
 using AuthorizationService.Models;
 using Microsoft.EntityFrameworkCore;
@@ -37,15 +38,15 @@ public class UsersService : IUsersService
     {
         if (authorizationDbContext.Users.Any(x => x.Login == user.Login))
         {
-            throw new Exception("This login is already taken.");
+            throw new ApiException(400, "This login is already taken.");
         }
-        if (!new EmailAddressAttribute().IsValid(user))
+        if (!new EmailAddressAttribute().IsValid(user.Email))
         {
-            throw new Exception("Invalid email.");
+            throw new ApiException(400, "Invalid email.");
         }
         if (authorizationDbContext.Users.Any(x => x.Email == user.Email))
         {
-            throw new Exception("This email is already in use.");
+            throw new ApiException(400, "This email is already in use.");
         }
 
         _ = await authorizationDbContext.Users.AddAsync(user);
@@ -84,14 +85,14 @@ public class UsersService : IUsersService
                 break;
             }
         }
-        return foundUser is null ? throw new Exception("User not Found") : foundUser;
+        return foundUser is null ? throw new ApiException(404, "User not Found") : foundUser;
     }
 
     public async Task<User> FindUserByEmailVerification(EmailVerification emailVerification)
     {
         return await authorizationDbContext.Users.FirstOrDefaultAsync(
                 x => x.EmailVerifications.Contains(emailVerification)
-            ) ?? throw new Exception("User not found");
+            ) ?? throw new ApiException(404, "User not found");
     }
 
     public async Task<User> FindUserByEncryptedNonceWithEmail(
@@ -104,7 +105,7 @@ public class UsersService : IUsersService
             .Replace(nonce, "");
 
         return await authorizationDbContext.Users.FirstOrDefaultAsync(x => x.Email == email)
-            ?? throw new Exception("User with this email is not exist.");
+            ?? throw new ApiException(400, "User with this email is not exist.");
     }
 
     public async Task SetNewUserPassword(User user, string encryptedHashedPassword)

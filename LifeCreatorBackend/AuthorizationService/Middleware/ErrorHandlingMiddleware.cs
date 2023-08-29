@@ -1,10 +1,11 @@
-﻿using System.Text.Json;
+﻿using AuthorizationService.Common;
+using System.Text.Json;
 
 namespace AuthorizationService.Middleware;
 
 public class ErrorBody
 {
-    public string Error { get; set; }
+    public string Error { get; set; } = string.Empty;
 
     public ErrorBody(string error)
     {
@@ -27,13 +28,18 @@ public class ErrorHandlingMiddleware
         {
             await next.Invoke(context);
         }
-        catch (Exception ex)
+        catch (Exception ex) when ((string)context.Request.Path is not "/ErrorPage")
         {
             HttpResponse response = context.Response;
-            response.StatusCode = 500;
             response.ContentType = "application/json";
-            string json = JsonSerializer.Serialize(new ErrorBody(ex.Message));
-            await response.WriteAsync(json);
+            response.StatusCode = 500;
+            ErrorBody errorBody = new(response.StatusCode + ": Unknown internal error.");
+            if (ex is ApiException apiEx)
+            {
+                response.StatusCode = apiEx.StatusCode;
+                errorBody = new ErrorBody(apiEx.StatusCode + ": " + apiEx.Message);
+            }
+            await response.WriteAsync(JsonSerializer.Serialize(errorBody));
         }
     }
 }
