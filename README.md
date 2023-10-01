@@ -1,2 +1,2 @@
-# Scientific-work
-Scientific work on the topic of natural selection
+# Authorization service
+Application written in C# ASP.NET Core
